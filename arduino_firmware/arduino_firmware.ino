@@ -3,16 +3,18 @@
 // 2022-12-21 dan@marginallyclever.com
 //-----------------------------------------------------------------------------
 #include "pins.h"
+#include "CANBus.h"
 
 void setup() {
   SERIALsetup();
+  //CANsetup();
   LEDsetup();
 }
 
 void SERIALsetup() {
   pinMode(PIN_BOOT1,OUTPUT);
   digitalWrite(PIN_BOOT1,LOW);
-  Serial.begin(250000);
+  Serial.begin(115200);
   while(!Serial.available());
   digitalWrite(PIN_BOOT1,HIGH);
   Serial.println("Hello, world.");
@@ -32,10 +34,12 @@ void loop() {
 }
 
 void testIPS22200B() {
-  int r = (double)analogRead(PIN_IPS_COS) * 16.0 / 1024.0;
-  int g = (double)analogRead(PIN_IPS_SIN) * 16.0 / 1024.0;
-  analogWrite(PIN_PWM_RGB_B,r);
-  analogWrite(PIN_PWM_RGB_R,g);
+  double r = ((double)analogRead(PIN_IPS_COS) - 350.0) / (650.0 - 350.0);
+  double g = ((double)analogRead(PIN_IPS_SIN) - 350.0) / (650.0 - 350.0);
+  r = min(1.0,max(r,0.0));
+  g = min(1.0,max(g,0.0));
+  analogWrite(PIN_PWM_RGB_B,r*255.0);
+  analogWrite(PIN_PWM_RGB_R,g*255.0);
   analogWrite(PIN_PWM_RGB_G,0);
 
   Serial.print(analogRead(PIN_IPS_COS));
@@ -45,6 +49,8 @@ void testIPS22200B() {
   Serial.print(analogRead(PIN_IPS_COSN));
   Serial.print(F("\t"));
   Serial.println(analogRead(PIN_IPS_SINN));
+
+  delay(100);
 }
 
 void testIPS2200() {
