@@ -5,8 +5,6 @@
 #include "pins.h"
 #include "CANBus.h"
 #include <TMC2130Stepper.h>
-#include <TMC2130Stepper_REGDEFS.h>
-#include <TMC2130Stepper_UTILITY.h>
 
 
 #define STEPS_PER_DEGREE (105.0)
@@ -30,6 +28,8 @@ void setup() {
 // See also https://revspace.nl/TMC2130
 void MOTORsetup() {
   Serial.println("MOTORsetup()");
+	SPI.begin();
+	pinMode(PIN_SPI_MISO, INPUT_PULLUP);
   driver.begin();
   driver.rms_current(600);  // Set stepper current to 600mA. The command is the same as command TMC2130.setCurrent(600, 0.11, 0.5);
   driver.stealthChop(1);  // Enable extremely quiet stepping
@@ -78,18 +78,19 @@ void testMotor1() {
   driver.shaft_dir(diff>0?1:0);
   
   // debug
-  Serial.print(sensorAngle);
-  Serial.print("\t");
-  Serial.print(angleNow);
-  Serial.print("\t");
-  Serial.print(diff);
-  Serial.print("\t");
-  Serial.println(dir);
+  //Serial.print(sensorAngle);
+  //Serial.print("\t");
+  //Serial.print(angleNow);
+  //Serial.print("\t");
+  //Serial.print(diff);
+  //Serial.print("\t");
+  //Serial.println(dir);
 
   // move the motor
   digitalWrite(PIN_TMC_STEP,HIGH);
-  delay(5);
+  delayMicroseconds(100);
   digitalWrite(PIN_TMC_STEP,LOW);
+  delayMicroseconds(100);
 
   // keep count
   steps+=dir;
@@ -107,13 +108,13 @@ void testIPS22200B() {
   analogWrite(PIN_PWM_RGB_R,g*255.0);
   analogWrite(PIN_PWM_RGB_G,0);
 
-  Serial.print(analogRead(PIN_IPS_COS));
-  Serial.print(F("\t"));
-  Serial.print(analogRead(PIN_IPS_SIN));
-  Serial.print(F("\t"));
-  Serial.print(analogRead(PIN_IPS_COSN));
-  Serial.print(F("\t"));
-  Serial.println(analogRead(PIN_IPS_SINN));
+  //Serial.print(analogRead(PIN_IPS_COS));
+  //Serial.print(F("\t"));
+  //Serial.print(analogRead(PIN_IPS_SIN));
+  //Serial.print(F("\t"));
+  //Serial.print(analogRead(PIN_IPS_COSN));
+  //Serial.print(F("\t"));
+  //Serial.println(analogRead(PIN_IPS_SINN));
 }
 
 void testIPS2200() {
@@ -131,13 +132,19 @@ void testIPS2200() {
   sx = min(1.0,max(sx,-1.0));
   sy = min(1.0,max(sy,-1.0));
   // debug
+  double sensorAngleRadians = atan2(sy,sx);
   //Serial.print(sx);
   //Serial.print("\t");
-  //Serial.println(sy);
-  // store for later
-  double sensorAngleRadians = atan2(sy,sx);
-  sensorAngle = 180.0 + sensorAngleRadians * (180.0 / PI);
+  //Serial.print(sy);
+  //Serial.print("\t");
+  //Serial.println(sensorAngleRadians);
+
+  // convert -PI...PI -> 0...360
+  // and store in global for later
+  sensorAngle = 180.0 * (sensorAngleRadians+PI) / (2.0*PI);
+
   // color wheel
+  // convert -PI...PI -> 0...255
   int angle = 255.0 * (sensorAngleRadians + PI) / (2.0*PI);
   wheel((byte)(int)angle);
 }
