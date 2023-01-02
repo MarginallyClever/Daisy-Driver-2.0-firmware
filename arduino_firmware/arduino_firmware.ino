@@ -6,20 +6,32 @@
 #include "CANBus.h"
 #include <TMC2130Stepper.h>
 
+// define this value to report sensor readings
+#define DEBUG_SENSOR
+
 // motor gearbox parameters
 #define STEPS_PER_DEGREE (105.0)
 #define STEPS_PER_ROTATION (STEPS_PER_DEGREE*360)
 
 // sensor readings
-#define SENSOR_HIGH_VALUE (650.0)
-#define SENSOR_LOW_VALUE (350.0)
+#define SENSOR_BITS 12  // 10 is the default in arduino.  12 will get 4096 positions.
+#if SENSOR_BITS == 12
+  #define SENSOR_HIGH_VALUE (2700.0)
+  #define SENSOR_LOW_VALUE (1400.0)
+#else
+  #define SENSOR_HIGH_VALUE (675.0)
+  #define SENSOR_LOW_VALUE (350.0)
+#endif
 #define SENSOR_RANGE (SENSOR_HIGH_VALUE - SENSOR_LOW_VALUE)
 
+// for TMC2130 StallGuard
+#define STALL_VALUE 0 // [-64..63]
 
+// the stepper driver interface
 TMC2130Stepper driver = TMC2130Stepper(PIN_TMC_EN, PIN_TMC_DIR, PIN_TMC_STEP, PIN_SPI_TMC_CS, PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_CLK);
-
+// the number of steps taken by the motor
 int steps = 0;
-
+// the angle last read by the sensor
 double sensorAngle = 0;
 
 
@@ -29,20 +41,49 @@ void setup() {
   LEDsetup();
   SENSORsetup();
   MOTORsetup();
-  CANsetup();
+  //CANsetup();
+}
+
+
+void CANsetup() {
+  Serial.println(F("CANsetup()"));
+  //bool ret = CANInit(CAN_500KBPS, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
+  bool ret = CANInit(CAN_1000KBPS, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
+  if(ret) {
+    Serial.println(F("CANsetup OK"));
+  } else {
+    Serial.println(F("CANsetup FAILED"));
+  }
 }
 
 // prepare the TMC2130 driver
 // See also https://revspace.nl/TMC2130
 void MOTORsetup() {
-  Serial.println("MOTORsetup()");
+  Serial.println(F("MOTORsetup()"));
+
 	SPI.begin();
 	pinMode(PIN_SPI_MISO, INPUT_PULLUP);
+
   driver.begin();
   driver.rms_current(600);  // Set stepper current to 600mA. The command is the same as command TMC2130.setCurrent(600, 0.11, 0.5);
   driver.stealthChop(1);  // Enable extremely quiet stepping
   driver.microsteps(0);
 
+  // StallGuard magic
+  driver.toff(3);
+  driver.tbl(1);
+  driver.hysteresis_start(4);
+  driver.hysteresis_end(-2);
+  driver.diag1_stall(1);
+  driver.diag1_active_high(1);
+  driver.coolstep_min_speed(0xFFFFF); // 20bit max
+  driver.THIGH(0);
+  driver.semin(5);
+  driver.semax(2);
+  driver.sedn(0b01);
+  driver.sg_stall_value(STALL_VALUE);
+
+  // enable the driver
   digitalWrite(PIN_TMC_EN,LOW);
 }
 
@@ -69,7 +110,7 @@ void LEDsetup() {
 void loop() {
   //testLED();
 
-  //testIPS22200B();
+  SENSORdebug();
   testIPS2200();
 
   testMotor1();
@@ -106,25 +147,21 @@ void testMotor1() {
   if(steps>=STEPS_PER_ROTATION) steps -= STEPS_PER_ROTATION;
 }
 
-void testIPS22200B() {
-  double r = ((double)analogRead(PIN_IPS_COS) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
-  double g = ((double)analogRead(PIN_IPS_SIN) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
-  r = min(1.0,max(r,0.0));
-  g = min(1.0,max(g,0.0));
-  analogWrite(PIN_PWM_RGB_B,r*255.0);
-  analogWrite(PIN_PWM_RGB_R,g*255.0);
-  analogWrite(PIN_PWM_RGB_G,0);
-
-  //Serial.print(analogRead(PIN_IPS_COS));
-  //Serial.print(F("\t"));
-  //Serial.print(analogRead(PIN_IPS_SIN));
-  //Serial.print(F("\t"));
-  //Serial.print(analogRead(PIN_IPS_COSN));
-  //Serial.print(F("\t"));
-  //Serial.println(analogRead(PIN_IPS_SINN));
+void SENSORdebug() {
+#ifdef DEBUG_SENSOR
+  Serial.print(analogRead(PIN_IPS_COS));
+  Serial.print(F("\t"));
+  Serial.print(analogRead(PIN_IPS_SIN));
+  Serial.print(F("\t"));
+  Serial.print(analogRead(PIN_IPS_COSN));
+  Serial.print(F("\t"));
+  Serial.println(analogRead(PIN_IPS_SINN));
+#endif
 }
 
 void SENSORsetup() {
+  Serial.println(F("SENSORsetup()"));
+  analogReadResolution(12);
   testIPS2200();
   steps = sensorAngle * STEPS_PER_DEGREE;
 }
@@ -145,7 +182,7 @@ void testIPS2200() {
   sy = min(1.0,max(sy,-1.0));
 
   // get sensor angle as a value from 0...1
-  double sensorAngle = (atan2(sy,sx)+PI) / (2.0*PI);
+  double sensorAngleUnit = (atan2(sy,sx)+PI) / (2.0*PI);
   
   // debug
   //Serial.print(sx);
@@ -156,11 +193,11 @@ void testIPS2200() {
 
   // convert 0...1 -> 0...360
   // and store in global for later
-  sensorAngle = 180.0 * sensorAngle;
+  sensorAngle = 360.0 * sensorAngleUnit;
 
   // color wheel
   // convert 0...1 -> 0...255
-  wheel((byte)(int)(255.0 * sensorAngle));
+  wheel((byte)(int)(255.0 * sensorAngleUnit));
 }
 
 void testLED() {
