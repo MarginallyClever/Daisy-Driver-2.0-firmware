@@ -6,9 +6,15 @@
 #include "CANBus.h"
 #include <TMC2130Stepper.h>
 
-
+// motor gearbox parameters
 #define STEPS_PER_DEGREE (105.0)
 #define STEPS_PER_ROTATION (STEPS_PER_DEGREE*360)
+
+// sensor readings
+#define SENSOR_HIGH_VALUE (650.0)
+#define SENSOR_LOW_VALUE (350.0)
+#define SENSOR_RANGE (SENSOR_HIGH_VALUE - SENSOR_LOW_VALUE)
+
 
 TMC2130Stepper driver = TMC2130Stepper(PIN_TMC_EN, PIN_TMC_DIR, PIN_TMC_STEP, PIN_SPI_TMC_CS, PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_CLK);
 
@@ -16,12 +22,14 @@ int steps = 0;
 
 double sensorAngle = 0;
 
+
 void setup() {
   // serial must be first for enumeration.
   SERIALsetup();
   LEDsetup();
+  SENSORsetup();
   MOTORsetup();
-  //CANsetup();
+  CANsetup();
 }
 
 // prepare the TMC2130 driver
@@ -88,9 +96,9 @@ void testMotor1() {
 
   // move the motor
   digitalWrite(PIN_TMC_STEP,HIGH);
-  delayMicroseconds(100);
+  delayMicroseconds(2100);
   digitalWrite(PIN_TMC_STEP,LOW);
-  delayMicroseconds(100);
+  delayMicroseconds(2100);
 
   // keep count
   steps+=dir;
@@ -98,10 +106,9 @@ void testMotor1() {
   if(steps>=STEPS_PER_ROTATION) steps -= STEPS_PER_ROTATION;
 }
 
-
 void testIPS22200B() {
-  double r = ((double)analogRead(PIN_IPS_COS) - 350.0) / (650.0 - 350.0);
-  double g = ((double)analogRead(PIN_IPS_SIN) - 350.0) / (650.0 - 350.0);
+  double r = ((double)analogRead(PIN_IPS_COS) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
+  double g = ((double)analogRead(PIN_IPS_SIN) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
   r = min(1.0,max(r,0.0));
   g = min(1.0,max(g,0.0));
   analogWrite(PIN_PWM_RGB_B,r*255.0);
@@ -117,13 +124,18 @@ void testIPS22200B() {
   //Serial.println(analogRead(PIN_IPS_SINN));
 }
 
+void SENSORsetup() {
+  testIPS2200();
+  steps = sensorAngle * STEPS_PER_DEGREE;
+}
+
 void testIPS2200() {
   // get and make 0...1
-  double sx = ((double)analogRead(PIN_IPS_COS) - 350.0) / (650.0 - 350.0);
-  double sy = ((double)analogRead(PIN_IPS_SIN) - 350.0) / (650.0 - 350.0);
+  double sx = ((double)analogRead(PIN_IPS_COS) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
+  double sy = ((double)analogRead(PIN_IPS_SIN) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
 
-  double sxn = ((double)analogRead(PIN_IPS_COSN) - 350.0) / (650.0 - 350.0);
-  double syn = ((double)analogRead(PIN_IPS_SINN) - 350.0) / (650.0 - 350.0);
+  double sxn = ((double)analogRead(PIN_IPS_COSN) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
+  double syn = ((double)analogRead(PIN_IPS_SINN) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
 
   // convert 0...1 -> -1...1
   sx = (sx * 2.0) - 1.0; 
@@ -131,22 +143,24 @@ void testIPS2200() {
   // limit check
   sx = min(1.0,max(sx,-1.0));
   sy = min(1.0,max(sy,-1.0));
+
+  // get sensor angle as a value from 0...1
+  double sensorAngle = (atan2(sy,sx)+PI) / (2.0*PI);
+  
   // debug
-  double sensorAngleRadians = atan2(sy,sx);
   //Serial.print(sx);
   //Serial.print("\t");
   //Serial.print(sy);
   //Serial.print("\t");
-  //Serial.println(sensorAngleRadians);
+  //Serial.println(sensorAngle);
 
-  // convert -PI...PI -> 0...360
+  // convert 0...1 -> 0...360
   // and store in global for later
-  sensorAngle = 180.0 * (sensorAngleRadians+PI) / (2.0*PI);
+  sensorAngle = 180.0 * sensorAngle;
 
   // color wheel
-  // convert -PI...PI -> 0...255
-  int angle = 255.0 * (sensorAngleRadians + PI) / (2.0*PI);
-  wheel((byte)(int)angle);
+  // convert 0...1 -> 0...255
+  wheel((byte)(int)(255.0 * sensorAngle));
 }
 
 void testLED() {
