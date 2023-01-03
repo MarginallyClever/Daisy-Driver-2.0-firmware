@@ -161,7 +161,7 @@ void SENSORdebug() {
 
 void SENSORsetup() {
   Serial.println(F("SENSORsetup()"));
-  analogReadResolution(12);
+  analogReadResolution(SENSOR_BITS);
   testIPS2200();
   steps = sensorAngle * STEPS_PER_DEGREE;
 }
