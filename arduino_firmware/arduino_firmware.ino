@@ -5,64 +5,108 @@
 #include "pins.h"
 #include "CANBus.h"
 #include <TMC2130Stepper.h>
+#include <Wire.h>
 
-// define this value to report sensor readings
+//----------------------------
+// Mutually exclusive features - With STM32F103FC8T6 you can have USB serial or CANBus but not both.
+// If you try to use both very likely neither will work.
+
+// define this to use USB serial.
+#define BUILD_SERIAL
+// define this to use CANBus.
+//#define BUILD_CANBUS
+
+#if defined(BUILD_SERIAL) && defined(BUILD_CANBUS)
+#error BUILD_SERIAL or BUILD_CANBUS.  Not both at once!
+#endif
+
+#ifdef BUILD_SERIAL
+#define DEBUG(x)    Serial.print(x)
+#define DEBUGLN(x)  Serial.println(x)
+#else
+#define DEBUG(x)    nop()
+#define DEBUGLN(x)  nop()
+#endif
+
+//----------------------------
+// sensor readings
+
+// define this value to report sensor readings over serial (if BUILD_SERIAL is enabled)
 #define DEBUG_SENSOR
+
+#define SENSOR_BITS 12  // 10 is the default in arduino.  12 will get 4096 positions.
+#if SENSOR_BITS == 12
+  #define SENSOR_FULL_VALUE (4096.0)
+#else
+  #define SENSOR_FULL_VALUE (2048.0)
+#endif
+#define SENSOR_MIDDLE_VALUE (SENSOR_FULL_VALUE*0.5)
+#define SENSOR_RANGE_HALF (SENSOR_FULL_VALUE*0.5)
+
+// the angle last read by the sensor
+double sensorAngle = 0;
+
+//----------------------------
+// define this value to report stepper calculations over serial (if BUILD_SERIAL is enabled)
+//#define DEBUG_STEPPING
 
 // motor gearbox parameters
 #define STEPS_PER_DEGREE (105.0)
 #define STEPS_PER_ROTATION (STEPS_PER_DEGREE*360)
-
-// sensor readings
-#define SENSOR_BITS 12  // 10 is the default in arduino.  12 will get 4096 positions.
-#if SENSOR_BITS == 12
-  #define SENSOR_HIGH_VALUE (2700.0)
-  #define SENSOR_LOW_VALUE (1400.0)
-#else
-  #define SENSOR_HIGH_VALUE (675.0)
-  #define SENSOR_LOW_VALUE (350.0)
-#endif
-#define SENSOR_RANGE (SENSOR_HIGH_VALUE - SENSOR_LOW_VALUE)
 
 // for TMC2130 StallGuard
 #define STALL_VALUE 0 // [-64..63]
 
 // the stepper driver interface
 TMC2130Stepper driver = TMC2130Stepper(PIN_TMC_EN, PIN_TMC_DIR, PIN_TMC_STEP, PIN_SPI_TMC_CS, PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_CLK);
-// the number of steps taken by the motor
+// the current motor position, in steps.
 int steps = 0;
-// the angle last read by the sensor
-double sensorAngle = 0;
 
 
 void setup() {
+  #ifdef BUILD_SERIAL
   // serial must be first for enumeration.
-  SERIALsetup();
+    SERIALsetup();
+  #endif
+
+  SPIsetup();
+
+  #ifdef BUILD_CANBUS
+    CANsetup();
+  #endif
+
   LEDsetup();
+
   SENSORsetup();
+
+  // must come after SPIsetup
   MOTORsetup();
-  //CANsetup();
 }
 
 
+void SPIsetup() {
+	SPI.begin();
+	pinMode(PIN_SPI_MISO, INPUT_PULLUP);
+}
+
+#ifdef BUILD_CANBUS
 void CANsetup() {
-  Serial.println(F("CANsetup()"));
+  DEBUGLN(F("CANsetup()"));
   //bool ret = CANInit(CAN_500KBPS, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
   bool ret = CANInit(CAN_1000KBPS, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
   if(ret) {
-    Serial.println(F("CANsetup OK"));
+    DEBUGLN(F("CANsetup OK"));
   } else {
-    Serial.println(F("CANsetup FAILED"));
+    DEBUGLN(F("CANsetup FAILED"));
   }
 }
+#endif
 
 // prepare the TMC2130 driver
 // See also https://revspace.nl/TMC2130
 void MOTORsetup() {
-  Serial.println(F("MOTORsetup()"));
+  DEBUGLN(F("MOTORsetup()"));
 
-	SPI.begin();
-	pinMode(PIN_SPI_MISO, INPUT_PULLUP);
 
   driver.begin();
   driver.rms_current(600);  // Set stepper current to 600mA. The command is the same as command TMC2130.setCurrent(600, 0.11, 0.5);
@@ -87,6 +131,7 @@ void MOTORsetup() {
   digitalWrite(PIN_TMC_EN,LOW);
 }
 
+#ifdef BUILD_SERIAL
 void SERIALsetup() {
   // must be first, prevents connected USB devices from enumerating this device before it is ready.
   pinMode(PIN_BOOT1,OUTPUT);
@@ -97,11 +142,12 @@ void SERIALsetup() {
   // now tell whoever we connect to that we're ready to be enumerated.
   digitalWrite(PIN_BOOT1,HIGH);
 
-  Serial.println("Hello, world.");
+  DEBUGLN("Hello, world.");
 }
+#endif
 
 void LEDsetup() {
-  Serial.println("LEDsetup()");
+  DEBUGLN("LEDsetup()");
   pinMode(PIN_PWM_RGB_B,OUTPUT);
   pinMode(PIN_PWM_RGB_R,OUTPUT);
   pinMode(PIN_PWM_RGB_G,OUTPUT);
@@ -113,10 +159,10 @@ void loop() {
   SENSORdebug();
   testIPS2200();
 
-  testMotor1();
+  MOTORstep();
 }
 
-void testMotor1() {
+void MOTORstep() {
   double angleNow = steps / STEPS_PER_DEGREE;
   // get the difference between sensor and assumed motor position
   double diff = sensorAngle - angleNow;
@@ -126,20 +172,21 @@ void testMotor1() {
   double dir = diff>0 ? 1 : -1;
   driver.shaft_dir(diff>0?1:0);
   
-  // debug
-  //Serial.print(sensorAngle);
-  //Serial.print("\t");
-  //Serial.print(angleNow);
-  //Serial.print("\t");
-  //Serial.print(diff);
-  //Serial.print("\t");
-  //Serial.println(dir);
+  #ifdef DEBUG_STEPPING
+    DEBUG(sensorAngle);
+    DEBUG("\t");
+    DEBUG(angleNow);
+    DEBUG("\t");
+    DEBUG(diff);
+    DEBUG("\t");
+    DEBUGLN(dir);
+  #endif
 
   // move the motor
   digitalWrite(PIN_TMC_STEP,HIGH);
-  delayMicroseconds(2100);
+  delayMicroseconds(1000);
   digitalWrite(PIN_TMC_STEP,LOW);
-  delayMicroseconds(2100);
+  delayMicroseconds(1000);
 
   // keep count
   steps+=dir;
@@ -148,35 +195,49 @@ void testMotor1() {
 }
 
 void SENSORdebug() {
-#ifdef DEBUG_SENSOR
-  Serial.print(analogRead(PIN_IPS_COS));
-  Serial.print(F("\t"));
-  Serial.print(analogRead(PIN_IPS_SIN));
-  Serial.print(F("\t"));
-  Serial.print(analogRead(PIN_IPS_COSN));
-  Serial.print(F("\t"));
-  Serial.println(analogRead(PIN_IPS_SINN));
-#endif
+  #ifdef DEBUG_SENSOR
+    double c  = ((double)analogRead(PIN_IPS_COS ) - SENSOR_MIDDLE_VALUE);
+    double s  = ((double)analogRead(PIN_IPS_SIN ) - SENSOR_MIDDLE_VALUE);
+    double cn = ((double)analogRead(PIN_IPS_COSN) - SENSOR_MIDDLE_VALUE);
+    double sn = ((double)analogRead(PIN_IPS_SINN) - SENSOR_MIDDLE_VALUE);
+    int a = c-cn;
+    int b = s-sn;
+    DEBUG(c);
+    DEBUG(F("\t"));
+    DEBUG(s);
+    DEBUG(F("\t"));
+    DEBUG(cn);
+    DEBUG(F("\t"));
+    DEBUG(sn);
+    DEBUG(F("\t"));
+    DEBUG(a);
+    DEBUG(F("\t"));
+    DEBUGLN(b);
+  #endif
 }
 
 void SENSORsetup() {
-  Serial.println(F("SENSORsetup()"));
+  DEBUGLN(F("SENSORsetup()"));
+
   analogReadResolution(SENSOR_BITS);
+
+  // use i2c to adjust the sensor receiver half-gain.  See IPS2200 programming guide section 3.5.3
+  
+  // read the current sensor value
   testIPS2200();
   steps = sensorAngle * STEPS_PER_DEGREE;
 }
 
 void testIPS2200() {
-  // get and make 0...1
-  double sx = ((double)analogRead(PIN_IPS_COS) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
-  double sy = ((double)analogRead(PIN_IPS_SIN) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
-
-  double sxn = ((double)analogRead(PIN_IPS_COSN) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
-  double syn = ((double)analogRead(PIN_IPS_SINN) - SENSOR_LOW_VALUE) / SENSOR_RANGE;
-
-  // convert 0...1 -> -1...1
-  sx = (sx * 2.0) - 1.0; 
-  sy = (sy * 2.0) - 1.0;
+  // if sensor max VDD is 5 and min is 0 then middle is 2.5 and Renesas says the max/min of the sensor value will be +/-1.25 (1/4 VDD)
+  // get and make -1...1
+  double c  = ((double)analogRead(PIN_IPS_COS ) - SENSOR_MIDDLE_VALUE) / SENSOR_RANGE_HALF;
+  double s  = ((double)analogRead(PIN_IPS_SIN ) - SENSOR_MIDDLE_VALUE) / SENSOR_RANGE_HALF;
+  double cn = ((double)analogRead(PIN_IPS_COSN) - SENSOR_MIDDLE_VALUE) / SENSOR_RANGE_HALF;
+  double sn = ((double)analogRead(PIN_IPS_SINN) - SENSOR_MIDDLE_VALUE) / SENSOR_RANGE_HALF;
+  // one = half minus negative half
+  double sx = c-cn; 
+  double sy = s-sn;
   // limit check
   sx = min(1.0,max(sx,-1.0));
   sy = min(1.0,max(sy,-1.0));
@@ -185,11 +246,11 @@ void testIPS2200() {
   double sensorAngleUnit = (atan2(sy,sx)+PI) / (2.0*PI);
   
   // debug
-  //Serial.print(sx);
-  //Serial.print("\t");
-  //Serial.print(sy);
-  //Serial.print("\t");
-  //Serial.println(sensorAngle);
+  //DEBUG(sx);
+  //DEBUG("\t");
+  //DEBUG(sy);
+  //DEBUG("\t");
+  //DEBUGLN(sensorAngle);
 
   // convert 0...1 -> 0...360
   // and store in global for later
@@ -201,7 +262,7 @@ void testIPS2200() {
 }
 
 void testLED() {
-  for(float i=0;i<256;++i) {
+  for(int i=0;i<256;++i) {
     wheel(i);
     delay(5);
   }
