@@ -9,7 +9,7 @@
 
 //----------------------------
 // Mutually exclusive features - With STM32F103FC8T6 you can have USB serial or CANBus but not both.
-// If you try to use both very likely neither will work.
+// If you try to use both then neither will work.
 
 // define this to use USB serial.
 #define BUILD_SERIAL
@@ -89,6 +89,7 @@ void SPIsetup() {
 	pinMode(PIN_SPI_MISO, INPUT_PULLUP);
 }
 
+
 #ifdef BUILD_CANBUS
 void CANsetup() {
   DEBUGLN(F("CANsetup()"));
@@ -101,6 +102,7 @@ void CANsetup() {
   }
 }
 #endif
+
 
 // prepare the TMC2130 driver
 // See also https://revspace.nl/TMC2130
@@ -131,6 +133,7 @@ void MOTORsetup() {
   digitalWrite(PIN_TMC_EN,LOW);
 }
 
+
 #ifdef BUILD_SERIAL
 void SERIALsetup() {
   // must be first, prevents connected USB devices from enumerating this device before it is ready.
@@ -146,12 +149,14 @@ void SERIALsetup() {
 }
 #endif
 
+
 void LEDsetup() {
   DEBUGLN("LEDsetup()");
   pinMode(PIN_PWM_RGB_B,OUTPUT);
   pinMode(PIN_PWM_RGB_R,OUTPUT);
   pinMode(PIN_PWM_RGB_G,OUTPUT);
 }
+
 
 void loop() {
   //testLED();
@@ -161,6 +166,7 @@ void loop() {
 
   MOTORstep();
 }
+
 
 void MOTORstep() {
   double angleNow = steps / STEPS_PER_DEGREE;
@@ -194,6 +200,7 @@ void MOTORstep() {
   if(steps>=STEPS_PER_ROTATION) steps -= STEPS_PER_ROTATION;
 }
 
+
 void SENSORdebug() {
   #ifdef DEBUG_SENSOR
     double c  = ((double)analogRead(PIN_IPS_COS ) - SENSOR_MIDDLE_VALUE);
@@ -215,6 +222,7 @@ void SENSORdebug() {
     DEBUGLN(b);
   #endif
 }
+
 
 void SENSORsetup() {
   DEBUGLN(F("SENSORsetup()"));
@@ -261,12 +269,14 @@ void testIPS2200() {
   wheel((byte)(int)(255.0 * sensorAngleUnit));
 }
 
+
 void testLED() {
   for(int i=0;i<256;++i) {
     wheel(i);
     delay(5);
   }
 }
+
 
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
