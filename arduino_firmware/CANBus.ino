@@ -5,6 +5,8 @@
 #include "CANBus.h"
 #include <assert.h>
 
+char CANBusAddress;
+
 // Calculation of bit timing dependent on peripheral clock rate
 int16_t CANComputeTimings(const uint32_t peripheral_clock_rate,
                           const uint32_t target_bitrate,
@@ -124,19 +126,19 @@ int16_t CANComputeTimings(const uint32_t peripheral_clock_rate,
     out_timings->time_segment_2 = bs2;
 
     #ifdef CAN_DEBUG
-      Serial.print("target_bitrate=");
-      Serial.println(target_bitrate);
-      Serial.print("peripheral_clock_rate=");
-      Serial.println(peripheral_clock_rate);
+      DEBUG("target_bitrate=");
+      DEBUGLN(target_bitrate);
+      DEBUG("peripheral_clock_rate=");
+      DEBUGLN(peripheral_clock_rate);
   
-      Serial.print("timings.baud_rate_prescaler=");
-      Serial.println(out_timings->baud_rate_prescaler);
-      Serial.print("timings.time_segment_1=");
-      Serial.println(out_timings->time_segment_1);
-      Serial.print("timings.time_segment_2=");
-      Serial.println(out_timings->time_segment_2);
-      Serial.print("timings.resynchronization_jump_width=");
-      Serial.println(out_timings->resynchronization_jump_width);
+      DEBUG("timings.baud_rate_prescaler=");
+      DEBUGLN(out_timings->baud_rate_prescaler);
+      DEBUG("timings.time_segment_1=");
+      DEBUGLN(out_timings->time_segment_1);
+      DEBUG("timings.time_segment_2=");
+      DEBUGLN(out_timings->time_segment_2);
+      DEBUG("timings.resynchronization_jump_width=");
+      DEBUGLN(out_timings->resynchronization_jump_width);
     #endif
     return 0;
 }
@@ -144,9 +146,9 @@ int16_t CANComputeTimings(const uint32_t peripheral_clock_rate,
 // Print registers.
 void CANPrintRegister(const char * buf, uint32_t reg) {
   #ifdef CAN_DEBUG
-  Serial.print(buf);
-  Serial.print(reg, HEX);
-  Serial.println();
+  DEBUG(buf);
+  DEBUG(reg, HEX);
+  DEBUGLN();
   #endif
 }
 
@@ -286,14 +288,14 @@ bool CANInit(BITRATE bitrate, int remap) {
    
   // Set bit timing register 
   CAN_bit_timing_config_t timings;
-  Serial.print("bitrate=");
-  Serial.println(bitrate);
+  DEBUG("bitrate=");
+  DEBUGLN(bitrate);
   uint32_t target_bitrate = SPEED[bitrate];
-  Serial.print("target_bitrate=");
-  Serial.println(target_bitrate);
+  DEBUG("target_bitrate=");
+  DEBUGLN(target_bitrate);
   int result = CANComputeTimings(HAL_RCC_GetPCLK1Freq(), target_bitrate, &timings);
-  Serial.print("CANComputeTimings result=");
-  Serial.println(result);
+  DEBUG("CANComputeTimings result=");
+  DEBUGLN(result);
   if (result) while(true);  
   CAN1->BTR = (((timings.resynchronization_jump_width - 1U) &    3U) << 24U) |
               (((timings.time_segment_1 - 1U)               &   15U) << 16U) |
@@ -331,12 +333,12 @@ bool CANInit(BITRATE bitrate, int remap) {
     }
     delayMicroseconds(1000);
   }
-  //Serial.print("can1=");
-  //Serial.println(can1);
+  //DEBUG("can1=");
+  //DEBUGLN(can1);
   if (can1) {
-    Serial.println("CAN1 initialize ok");
+    DEBUGLN("CAN1 initialize ok");
   } else {
-    Serial.println("CAN1 initialize fail!!");
+    DEBUGLN("CAN1 initialize fail!!");
     return false;
   }
   return true; 
@@ -429,10 +431,10 @@ void CANSend(CAN_msg_t* CAN_tx_msg) {
 
   // The mailbox don't becomes empty while loop
   if (CAN1->sTxMailBox[0].TIR & 0x1UL) {
-    Serial.println("Send Fail");
-    Serial.println(CAN1->ESR);
-    Serial.println(CAN1->MSR);
-    Serial.println(CAN1->TSR);
+    DEBUGLN("Send Fail");
+    DEBUGLN(CAN1->ESR);
+    DEBUGLN(CAN1->MSR);
+    DEBUGLN(CAN1->TSR);
   }
 }
 
@@ -482,8 +484,7 @@ void CANdemo() {
       CAN_TX_msg.id = 0x103;
     }
     CANSend(&CAN_TX_msg);
-    frameLength++;
-    if (frameLength == 9) frameLength = 0;
+    frameLength = (frameLength+1)%9;
     counter++;
   }
   
@@ -491,32 +492,80 @@ void CANdemo() {
     CANReceive(&CAN_RX_msg);
 
     if (CAN_RX_msg.format == EXTENDED_FORMAT) {
-      Serial.print("Extended ID: 0x");
-      if (CAN_RX_msg.id < 0x10000000) Serial.print("0");
-      if (CAN_RX_msg.id < 0x1000000) Serial.print("00");
-      if (CAN_RX_msg.id < 0x100000) Serial.print("000");
-      if (CAN_RX_msg.id < 0x10000) Serial.print("0000");
-      Serial.print(CAN_RX_msg.id, HEX);
+      DEBUG("Extended ID: 0x");
+      if (CAN_RX_msg.id < 0x10000000) DEBUG("0");
+      if (CAN_RX_msg.id < 0x1000000) DEBUG("00");
+      if (CAN_RX_msg.id < 0x100000) DEBUG("000");
+      if (CAN_RX_msg.id < 0x10000) DEBUG("0000");
+      DEBUG2(CAN_RX_msg.id, HEX);
     } else {
-      Serial.print("Standard ID: 0x");
-      if (CAN_RX_msg.id < 0x100) Serial.print("0");
-      if (CAN_RX_msg.id < 0x10) Serial.print("00");
-      Serial.print(CAN_RX_msg.id, HEX);
-      Serial.print("     ");
+      DEBUG("Standard ID: 0x");
+      if (CAN_RX_msg.id < 0x100) DEBUG("0");
+      if (CAN_RX_msg.id < 0x10) DEBUG("00");
+      DEBUG2(CAN_RX_msg.id, HEX);
+      DEBUG("     ");
     }
 
-    Serial.print(" DLC: ");
-    Serial.print(CAN_RX_msg.len);
+    DEBUG(" DLC: ");
+    DEBUG(CAN_RX_msg.len);
     if (CAN_RX_msg.type == DATA_FRAME) {
-      Serial.print(" Data: ");
+      DEBUG(" Data: ");
       for(int i=0; i<CAN_RX_msg.len; i++) {
-        Serial.print("0x"); 
-        Serial.print(CAN_RX_msg.data[i], HEX); 
-        if (i != (CAN_RX_msg.len-1))  Serial.print(" ");
+        DEBUG("0x"); 
+        DEBUG2(CAN_RX_msg.data[i], HEX); 
+        if (i != (CAN_RX_msg.len-1))  DEBUG(" ");
       }
-      Serial.println();
+      DEBUGLN();
     } else {
-      Serial.println(" Data: REMOTE REQUEST FRAME");
+      DEBUGLN(" Data: REMOTE REQUEST FRAME");
     }
   }
 }
+
+
+#ifdef BUILD_CANBUS
+void CANsetup() {
+  DEBUGLN(F("CANsetup()"));
+  LEDsetColor(0,0,0);
+  
+  pinMode(PIN_CAN_SILENT,OUTPUT);
+  digitalWrite(PIN_CAN_SILENT,HIGH);
+
+  bool ret = CANInit(CAN_SPEED, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
+  if(ret) {
+    DEBUGLN(F("CANsetup OK"));
+    LEDsetColor(0,255,0);
+  } else {
+    DEBUGLN(F("CANsetup FAILED"));
+    LEDsetColor(255,0,0);
+  }
+}
+
+
+unsigned long previousMillis = 0;     // stores last time output was updated
+long count=0;
+
+void CANstep() {
+  unsigned long currentMillis = millis();
+  const long interval = 100;           // transmission interval (milliseconds)
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    count = (count+1)%2;
+    if(count==1)  LEDsetColor(0,0,255);
+    else          LEDsetColor(0,255,0);
+
+    CAN_msg_t CAN_TX_msg;
+    CAN_TX_msg.id = (0x1<<7) + CANBusAddress;
+    CAN_TX_msg.format = STANDARD_FORMAT;
+    CAN_TX_msg.type = DATA_FRAME;
+    CAN_TX_msg.len = 4;
+    int32_t *samesies = (int32_t*)&sensorAngle;
+    CAN_TX_msg.data[0] = samesies[0];
+    CAN_TX_msg.data[1] = samesies[1];
+    CAN_TX_msg.data[2] = samesies[2];
+    CAN_TX_msg.data[3] = samesies[3];
+    CANSend(&CAN_TX_msg);
+  }
+}
+#endif
