@@ -18,21 +18,19 @@
 #endif
 
 #ifdef BUILD_SERIAL
-#define DEBUG(x)        Serial.print(x)
-#define DEBUG2(x0,x1)   Serial.print(x0,x1)
-#define DEBUGLN(x)      Serial.println(x)
+  #define DEBUG(x)        Serial.print(x)
+  #define DEBUG2(x0,x1)   Serial.print(x0,x1)
+  #define DEBUGLN(x)      Serial.println(x)
 #else
+  //#define CAN_SPEED       CAN_1000KBPS
+  //#define CAN_SPEED       CAN_500KBPS
+  #define CAN_SPEED       CAN_100KBPS
 
-//#define CAN_SPEED       CAN_1000KBPS
-#define CAN_SPEED       CAN_500KBPS
-//#define CAN_SPEED       CAN_100KBPS
-
-#define NOP __asm__("nop\n\t")
-#define DEBUG(x)        NOP
-#define DEBUG2(x0,x1)   NOP
-#define DEBUGLN(x)      NOP
+  #define NOP __asm__("nop\n\t")
+  #define DEBUG(x)        NOP
+  #define DEBUG2(x0,x1)   NOP
+  #define DEBUGLN(x)      NOP
 #endif
-
 
 #include "pins.h"
 #include "CANBus.h"
