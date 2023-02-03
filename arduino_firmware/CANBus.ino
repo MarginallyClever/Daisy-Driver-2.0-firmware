@@ -527,9 +527,9 @@ void CANdemo() {
 void CANsetup() {
   DEBUGLN(F("CANsetup()"));
   LEDsetColor(0,0,0);
-  
+
   pinMode(PIN_CAN_SILENT,OUTPUT);
-  digitalWrite(PIN_CAN_SILENT,HIGH);
+  digitalWrite(PIN_CAN_SILENT,LOW);
 
   bool ret = CANInit(CAN_SPEED, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
   if(ret) {
@@ -545,15 +545,29 @@ void CANsetup() {
 unsigned long previousMillis = 0;     // stores last time output was updated
 long count=0;
 
+
 void CANstep() {
+  CANwriteTest();
+  CANreadTest();
+}
+
+
+void CANreadTest() {
+  if(CANMsgAvail()) {
+    CAN_msg_t CAN_RX_msg;
+    CANReceive(&CAN_RX_msg);
+    count = (count+1)%2;
+    if(count==1)  LEDsetColor(0,0,255);
+    else          LEDsetColor(0,255,0);
+  }
+}
+
+void CANwriteTest() {
   unsigned long currentMillis = millis();
   const long interval = 100;           // transmission interval (milliseconds)
 
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
-    count = (count+1)%2;
-    if(count==1)  LEDsetColor(0,0,255);
-    else          LEDsetColor(0,255,0);
 
     CAN_msg_t CAN_TX_msg;
     CAN_TX_msg.id = (0x1<<7) + CANBusAddress;
