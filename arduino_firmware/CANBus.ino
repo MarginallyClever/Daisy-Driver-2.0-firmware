@@ -7,6 +7,14 @@
 
 char CANBusAddress;
 
+
+unsigned long previousMillis = 0;     // stores last time output was updated
+long countR=0,countS=0;
+int canR=0,canG=0,canB=0;
+
+uint8_t counter = 0;
+uint8_t frameLength = 0;
+
 // Calculation of bit timing dependent on peripheral clock rate
 int16_t CANComputeTimings(const uint32_t peripheral_clock_rate,
                           const uint32_t target_bitrate,
@@ -395,7 +403,7 @@ void CANReceive(CAN_msg_t* CAN_rx_msg)
  * @params CAN_tx_msg - CAN message structure for transmission
  * 
  */
-void CANSend(CAN_msg_t* CAN_tx_msg) {
+byte CANSend(CAN_msg_t* CAN_tx_msg) {
   volatile int count = 0;
 
   uint32_t out = 0;
@@ -435,7 +443,11 @@ void CANSend(CAN_msg_t* CAN_tx_msg) {
     DEBUGLN(CAN1->ESR);
     DEBUGLN(CAN1->MSR);
     DEBUGLN(CAN1->TSR);
+    canR=255;
+    return 1;
   }
+  canR=0;
+  return 0;
 }
 
 /**
@@ -450,10 +462,8 @@ uint8_t CANMsgAvail(void) {
 }
 
 
+
 void CANdemo() {
-  uint8_t counter = 0;
-  uint8_t frameLength = 0;
-  unsigned long previousMillis = 0;     // stores last time output was updated
   const long interval = 1000;           // transmission interval (milliseconds)
 
   CAN_msg_t CAN_TX_msg;
@@ -529,25 +539,25 @@ void CANsetup() {
   LEDsetColor(0,0,0);
 
   pinMode(PIN_CAN_SILENT,OUTPUT);
+  digitalWrite(PIN_CAN_SILENT,HIGH);
+  delay(1);
   digitalWrite(PIN_CAN_SILENT,LOW);
 
   bool ret = CANInit(CAN_SPEED, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
   if(ret) {
     DEBUGLN(F("CANsetup OK"));
-    LEDsetColor(0,255,0);
+    canR=0;
   } else {
     DEBUGLN(F("CANsetup FAILED"));
-    LEDsetColor(255,0,0);
+    canR=255;
   }
 }
 
 
-unsigned long previousMillis = 0;     // stores last time output was updated
-long count=0;
-
 void CANstep() {
   CANwriteTest();
   CANreadTest();
+  LEDsetColor(canR,canG,canB);
 }
 
 
@@ -555,8 +565,11 @@ void CANreadTest() {
   if(CANMsgAvail()) {
     CAN_msg_t CAN_RX_msg;
     CANReceive(&CAN_RX_msg);
+    countR = (countR+1)%2;
+    canG=(countR==1)?255:0;
   }
 }
+
 
 void CANwriteTest() {
   unsigned long currentMillis = millis();
@@ -564,9 +577,6 @@ void CANwriteTest() {
 
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
-    count = (count+1)%2;
-    if(count==1)  LEDsetColor(0,0,255);
-    else          LEDsetColor(0,255,0);
 
     CAN_msg_t CAN_TX_msg;
     CAN_TX_msg.id = (0x1<<7) + CANBusAddress;
@@ -578,7 +588,10 @@ void CANwriteTest() {
     CAN_TX_msg.data[1] = samesies[1];
     CAN_TX_msg.data[2] = samesies[2];
     CAN_TX_msg.data[3] = samesies[3];
-    CANSend(&CAN_TX_msg);
+    if(!CANSend(&CAN_TX_msg)) {
+      countS = (countS+1)%2;
+      canB=(countS==1)?255:0;
+    }
   }
 }
 #endif

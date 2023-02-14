@@ -23,8 +23,8 @@
   #define DEBUGLN(x)      Serial.println(x)
 #else
   //#define CAN_SPEED       CAN_1000KBPS
-  //#define CAN_SPEED       CAN_500KBPS
-  #define CAN_SPEED       CAN_100KBPS
+  #define CAN_SPEED       CAN_500KBPS
+  //#define CAN_SPEED       CAN_100KBPS
 
   #define NOP __asm__("nop\n\t")
   #define DEBUG(x)        NOP

@@ -114,7 +114,7 @@ extern void CANReceive(CAN_msg_t* CAN_rx_msg);
  * @params CAN_tx_msg - CAN message structure for transmission
  * 
  */
-extern void CANSend(CAN_msg_t* CAN_tx_msg);
+extern byte CANSend(CAN_msg_t* CAN_tx_msg);
 
 /**
  * Returns whether there are CAN messages available.
