@@ -14,6 +14,7 @@ void MEMORYsetup() {
 
 
 bool MEMORYload() {
+  DEBUG(F("EEPROM load..."));
   char storedVersion[4];
   int ePos=0;
 

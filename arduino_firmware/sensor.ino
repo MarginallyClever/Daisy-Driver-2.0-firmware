@@ -36,18 +36,14 @@ void SENSORread() {
   
   #ifdef DEBUG_SENSOR
     // debug
-    DEBUG(c);
-    DEBUG(F("\t"));
-    DEBUG(s);
-    DEBUG(F("\t"));
-    DEBUG(cn);
-    DEBUG(F("\t"));
-    DEBUG(sn);
-    DEBUG(F("\t"));
-    DEBUG(a);
-    DEBUG(F("\t"));
-    DEBUG(b);
-    DEBUG("\t");
+    DEBUG(analogRead(PIN_IPS_COS ) );    DEBUG('\t');
+    DEBUG(analogRead(PIN_IPS_SIN ) );    DEBUG('\t');
+    DEBUG(c );    DEBUG('\t');
+    DEBUG(s );    DEBUG('\t');
+    DEBUG(cn);    DEBUG('\t');
+    DEBUG(sn);    DEBUG('\t');
+    DEBUG(sx);    DEBUG('\t');
+    DEBUG(sy);    DEBUG('\t');
     DEBUGLN(sensorAngle);
   #endif
 
