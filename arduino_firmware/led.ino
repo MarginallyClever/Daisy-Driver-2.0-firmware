@@ -1,7 +1,21 @@
 #include "config.h"
 
 
-void testLED() {
+void LEDsetup() {
+  pinMode(PIN_PWM_RGB_B,OUTPUT);
+  pinMode(PIN_PWM_RGB_R,OUTPUT);
+  pinMode(PIN_PWM_RGB_G,OUTPUT);
+
+  for(int i=0;i<5;++i) {
+    LEDsetColor(255,255,255);
+    delay(50);
+    LEDsetColor(0,0,0);
+    delay(50);
+  }
+}
+
+
+void LEDtest() {
   for(int i=0;i<256;++i) {
     wheel(i);
     delay(5);
