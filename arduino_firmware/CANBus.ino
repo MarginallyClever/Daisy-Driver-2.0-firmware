@@ -5,8 +5,7 @@
 #include "CANBus.h"
 #include <assert.h>
 
-char CANBusAddress;
-
+uint8_t CANBusAddress;
 
 unsigned long previousMillis = 0;     // stores last time output was updated
 long countR=0,countS=0;
@@ -345,8 +344,10 @@ bool CANInit(BITRATE bitrate, int remap) {
   //DEBUGLN(can1);
   if (can1) {
     DEBUGLN("CAN1 initialize ok");
+    canR = 0;
   } else {
     DEBUGLN("CAN1 initialize fail!!");
+    canR = 255;
     return false;
   }
   return true; 
@@ -360,8 +361,7 @@ bool CANInit(BITRATE bitrate, int remap) {
  * @params CAN_rx_msg - CAN message structure for reception
  * 
  */
-void CANReceive(CAN_msg_t* CAN_rx_msg)
-{
+void CANReceive(CAN_msg_t* CAN_rx_msg) {
   uint32_t id = CAN1->sFIFOMailBox[0].RIR;
   if ((id & STM32_CAN_RIR_IDE) == 0) { // Standard frame format
       CAN_rx_msg->format = STANDARD_FORMAT;;
@@ -401,27 +401,25 @@ void CANReceive(CAN_msg_t* CAN_rx_msg)
  * data registers with the sent.
  * 
  * @params CAN_tx_msg - CAN message structure for transmission
- * 
+ * @return true if send succeeded.
  */
-byte CANSend(CAN_msg_t* CAN_tx_msg) {
-  volatile int count = 0;
-
+bool CANSend(CAN_msg_t* CAN_tx_msg) {
   uint32_t out = 0;
   if (CAN_tx_msg->format == EXTENDED_FORMAT) { // Extended frame format
-      out = ((CAN_tx_msg->id & CAN_EXT_ID_MASK) << 3U) | STM32_CAN_TIR_IDE;
+    out = ((CAN_tx_msg->id & CAN_EXT_ID_MASK) << 3U) | STM32_CAN_TIR_IDE;
   }
   else {                                       // Standard frame format
-      out = ((CAN_tx_msg->id & CAN_STD_ID_MASK) << 21U);
+    out = ((CAN_tx_msg->id & CAN_STD_ID_MASK) << 21U);
   }
 
   // Remote frame
   if (CAN_tx_msg->type == REMOTE_FRAME) {
-      out |= STM32_CAN_TIR_RTR;
+    out |= STM32_CAN_TIR_RTR;
   }
 
   CAN1->sTxMailBox[0].TDTR &= ~(0xF);
   CAN1->sTxMailBox[0].TDTR |= CAN_tx_msg->len & 0xFUL;
-  
+
   CAN1->sTxMailBox[0].TDLR  = (((uint32_t) CAN_tx_msg->data[3] << 24) |
                                ((uint32_t) CAN_tx_msg->data[2] << 16) |
                                ((uint32_t) CAN_tx_msg->data[1] <<  8) |
@@ -434,6 +432,7 @@ byte CANSend(CAN_msg_t* CAN_tx_msg) {
   // Send Go
   CAN1->sTxMailBox[0].TIR = out | STM32_CAN_TIR_TXRQ;
 
+  int count = 0;
   // Wait until the mailbox is empty
   while(CAN1->sTxMailBox[0].TIR & 0x1UL && count++ < 1000000);
 
@@ -443,11 +442,9 @@ byte CANSend(CAN_msg_t* CAN_tx_msg) {
     DEBUGLN(CAN1->ESR);
     DEBUGLN(CAN1->MSR);
     DEBUGLN(CAN1->TSR);
-    canR=255;
-    return 1;
+    return false;
   }
-  canR=0;
-  return 0;
+  return true;
 }
 
 /**
@@ -462,7 +459,7 @@ uint8_t CANMsgAvail(void) {
 }
 
 
-
+/*
 void CANdemo() {
   const long interval = 1000;           // transmission interval (milliseconds)
 
@@ -530,7 +527,7 @@ void CANdemo() {
       DEBUGLN(" Data: REMOTE REQUEST FRAME");
     }
   }
-}
+}*/
 
 
 #ifdef BUILD_CANBUS
@@ -539,8 +536,6 @@ void CANsetup() {
   LEDsetColor(0,0,0);
 
   pinMode(PIN_CAN_SILENT,OUTPUT);
-  digitalWrite(PIN_CAN_SILENT,HIGH);
-  delay(1);
   digitalWrite(PIN_CAN_SILENT,LOW);
 
   bool ret = CANInit(CAN_SPEED, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
@@ -578,8 +573,11 @@ void CANwriteTest() {
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
 
+    countS = (countS+1)%2;
+    canB=(countS==1)?255:0;
+
     CAN_msg_t CAN_TX_msg;
-    CAN_TX_msg.id = (0x1<<7) + CANBusAddress;
+    CAN_TX_msg.id = 0;// (0x1<<7) + CANBusAddress;
     CAN_TX_msg.format = STANDARD_FORMAT;
     CAN_TX_msg.type = DATA_FRAME;
     CAN_TX_msg.len = 4;
@@ -588,10 +586,9 @@ void CANwriteTest() {
     CAN_TX_msg.data[1] = samesies[1];
     CAN_TX_msg.data[2] = samesies[2];
     CAN_TX_msg.data[3] = samesies[3];
-    if(!CANSend(&CAN_TX_msg)) {
-      countS = (countS+1)%2;
-      canB=(countS==1)?255:0;
-    }
+
+    if(!CANSend(&CAN_TX_msg)) canR=255;
+    else canR=0;
   }
 }
 #endif

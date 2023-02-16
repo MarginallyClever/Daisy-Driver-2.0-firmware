@@ -54,7 +54,7 @@ typedef struct {
 
 //-----------------------------------------------------------------------------
 
-extern char CANBusAddress;
+extern uint8_t CANBusAddress;
 
 //-----------------------------------------------------------------------------
 
@@ -114,7 +114,7 @@ extern void CANReceive(CAN_msg_t* CAN_rx_msg);
  * @params CAN_tx_msg - CAN message structure for transmission
  * 
  */
-extern byte CANSend(CAN_msg_t* CAN_tx_msg);
+extern bool CANSend(CAN_msg_t* CAN_tx_msg);
 
 /**
  * Returns whether there are CAN messages available.
