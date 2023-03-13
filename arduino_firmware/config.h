@@ -6,9 +6,9 @@
 // If you try to use both then neither will work.
 
 // define this to use USB serial.
-//#define BUILD_SERIAL
+#define BUILD_SERIAL
 // define this to use CANBus.
-#define BUILD_CANBUS
+//#define BUILD_CANBUS
 
 #if defined(BUILD_SERIAL) && defined(BUILD_CANBUS)
 #error define BUILD_SERIAL or BUILD_CANBUS.  Not both at once!

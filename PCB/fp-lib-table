@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "MyLib")(type "KiCad")(uri "/home/wissam/.local/share/kicad/6.0/footprints/MyLib.pretty")(options "")(descr ""))
+)
