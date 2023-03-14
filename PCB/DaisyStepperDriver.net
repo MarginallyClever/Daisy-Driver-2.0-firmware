@@ -1,7 +1,7 @@
 (export (version "E")
   (design
     (source "/home/wissam/Documents/MarginallyCleverRobots/KiCAD/DaisyStepperDriver_v2/DaisyStepperDriver.kicad_sch")
-    (date "Fri 10 Mar 2023 01:56:56 AM EET")
+    (date "Mon 13 Mar 2023 11:24:16 AM EET")
     (tool "Eeschema 6.0.2+dfsg-1")
     (sheet (number "1") (name "/") (tstamps "/")
       (title_block
@@ -1343,7 +1343,6 @@
       (node (ref "L1") (pin "1") (pintype "passive"))
       (node (ref "R12") (pin "2") (pintype "passive"))
       (node (ref "R14") (pin "2") (pintype "passive"))
-      (node (ref "R7") (pin "2") (pintype "passive"))
       (node (ref "R9") (pin "2") (pintype "passive"))
       (node (ref "SW2") (pin "1") (pinfunction "A") (pintype "passive"))
       (node (ref "SW3") (pin "1") (pinfunction "A") (pintype "passive"))
@@ -1482,6 +1481,7 @@
       (node (ref "R15") (pin "2") (pintype "passive"))
       (node (ref "R16") (pin "2") (pintype "passive"))
       (node (ref "R6") (pin "1") (pintype "passive"))
+      (node (ref "R7") (pin "2") (pintype "passive"))
       (node (ref "SW1") (pin "1") (pinfunction "1") (pintype "passive"))
       (node (ref "SW2") (pin "3") (pinfunction "C") (pintype "passive"))
       (node (ref "SW3") (pin "3") (pinfunction "C") (pintype "passive"))
