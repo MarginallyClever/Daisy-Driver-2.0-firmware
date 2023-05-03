@@ -1,4 +1,5 @@
 #pragma once
+//----------------------------
 
 // the expected version of the firmware.  must be updated any time a variable is added or removed from the persistent store.
 #define FIRMWARE_VERSION        "V01"

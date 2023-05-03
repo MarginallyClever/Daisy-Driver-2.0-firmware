@@ -1,10 +1,6 @@
 #pragma once
-
 //----------------------------
 // sensor readings
-
-// define this value to report sensor readings over serial (if BUILD_SERIAL is enabled)
-#define DEBUG_SENSOR
 
 #define SENSOR_BITS 12  // 10 is the default in arduino.  12 will get 4096 positions.
 #if SENSOR_BITS == 12

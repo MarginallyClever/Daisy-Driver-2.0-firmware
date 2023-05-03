@@ -1,21 +1,18 @@
 #pragma once
 //-----------------------------------------------------------------------------
 // CAN bus for Daisy Driver
-// from https://github.com/nopnop2002/Arduino-STM32-CAN/tree/master/stm32f103
+// from https://github.com/nopnop2002/Arduino-STM32-CAN/blob/master/stm32f407/stm32f407.ino
 //-----------------------------------------------------------------------------
 
 //#define CAN_DEBUG  // uncomment to turn on serial debugging
 
-// Symbolic names for bit rate of CAN message
+/* Symbolic names for bit rate of CAN message                                */
 typedef enum {CAN_50KBPS, CAN_100KBPS, CAN_125KBPS, CAN_250KBPS, CAN_500KBPS, CAN_1000KBPS} BITRATE;
 
-// Real speed for bit rate of CAN message
-uint32_t SPEED[6] = {50*1000, 100*1000, 125*1000, 250*1000, 500*1000, 1000*1000};
-
-// Symbolic names for formats of CAN message
+/* Symbolic names for formats of CAN message                                 */
 typedef enum {STANDARD_FORMAT = 0, EXTENDED_FORMAT} CAN_FORMAT;
 
-// Symbolic names for type of CAN message
+/* Symbolic names for type of CAN message                                    */
 typedef enum {DATA_FRAME = 0, REMOTE_FRAME}         CAN_FRAME;
 
 //-----------------------------------------------------------------------------
@@ -36,20 +33,21 @@ typedef enum {DATA_FRAME = 0, REMOTE_FRAME}         CAN_FRAME;
 
 //-----------------------------------------------------------------------------
 
-typedef struct {
-  uint32_t id;        // 29 bit identifier
-  uint8_t  data[8];   // Data field
-  uint8_t  len;       // Length of data field in bytes
-  uint8_t  ch;        // Object channel(Not use)
-  uint8_t  format;    // 0 - STANDARD, 1- EXTENDED IDENTIFIER
-  uint8_t  type;      // 0 - DATA FRAME, 1 - REMOTE FRAME
+typedef struct
+{
+  uint32_t id;        /* 29 bit identifier                               */
+  uint8_t  data[8];   /* Data field                                      */
+  uint8_t  len;       /* Length of data field in bytes                   */
+  uint8_t  ch;        /* Object channel(Not use)                         */
+  uint8_t  format;    /* 0 - STANDARD, 1- EXTENDED IDENTIFIER            */
+  uint8_t  type;      /* 0 - DATA FRAME, 1 - REMOTE FRAME                */
 } CAN_msg_t;
 
-typedef struct {
-    uint16_t baud_rate_prescaler;                /// [1 to 1024]
-    uint8_t time_segment_1;                      /// [1 to 16]
-    uint8_t time_segment_2;                      /// [1 to 8]
-    uint8_t resynchronization_jump_width;        /// [1 to 4] (recommended value is 1)
+typedef const struct
+{
+  uint8_t TS2;
+  uint8_t TS1;
+  uint8_t BRP;
 } CAN_bit_timing_config_t;
 
 //-----------------------------------------------------------------------------

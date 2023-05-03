@@ -33,6 +33,10 @@ void SENSORread() {
 
   // get sensor angle as a value from 0...1
   double sensorAngleUnit = (atan2(sy,sx)+PI) / (2.0*PI);
+
+  // convert 0...1 -> 0...360
+  // and store in global for later
+  sensorAngle = 360.0 * sensorAngleUnit;
   
   #ifdef DEBUG_SENSOR
     // debug
@@ -45,13 +49,9 @@ void SENSORread() {
     DEBUG(sx);    DEBUG('\t');
     DEBUG(sy);    DEBUG('\t');
     DEBUGLN(sensorAngle);
-  #endif
-
-  // convert 0...1 -> 0...360
-  // and store in global for later
-  sensorAngle = 360.0 * sensorAngleUnit;
   
-  // color wheel
-  // convert 0...1 -> 0...255
-  //wheel((byte)(int)(255.0 * sensorAngleUnit));
+    // color wheel
+    // convert 0...1 -> 0...255
+    wheel((byte)(int)(255.0 * sensorAngleUnit));
+  #endif
 }

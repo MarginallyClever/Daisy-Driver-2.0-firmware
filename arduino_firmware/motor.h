@@ -1,8 +1,7 @@
 #pragma once
-
 //----------------------------
-// define this value to report stepper calculations over serial (if BUILD_SERIAL is enabled)
-//#define DEBUG_STEPPING
+
+//#define USE_SOFTWARE_SPI
 
 // motor gearbox parameters
 #define STEPS_PER_DEGREE (105.0)
