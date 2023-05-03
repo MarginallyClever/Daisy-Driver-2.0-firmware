@@ -34,7 +34,7 @@ void MOTORsetup() {
   driver.begin();
   driver.toff(5);           // enable StallGuard
   driver.rms_current(600);  // Set motor RMS current
-  driver.microsteps(1);    // Set microsteps (1,2,4,8,16)
+  driver.microsteps(0);    // Set microsteps (0,2,4,8,16)
 
   // Toggle stealthChop
   driver.en_pwm_mode(true);
@@ -50,7 +50,7 @@ void SPIsetup() {
   SPI.setMISO(PIN_SPI1_MISO);
   SPI.setSCLK(PIN_SPI1_CLK);
 	SPI.begin();
-	//pinMode(PIN_SPI1_MISO, INPUT_PULLUP);
+	pinMode(PIN_SPI1_MISO, INPUT_PULLUP);
 }
 
 
