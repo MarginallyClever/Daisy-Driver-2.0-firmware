@@ -1,5 +1,5 @@
 #pragma once
-//----------------------------
+//-----------------------------------------------------------------------------
 // sensor readings
 
 #define SENSOR_BITS 12  // 10 is the default in arduino.  12 will get 4096 positions.
