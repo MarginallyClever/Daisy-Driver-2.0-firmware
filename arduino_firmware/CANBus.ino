@@ -1,6 +1,5 @@
 //-----------------------------------------------------------------------------
 // CAN bus for Daisy Driver
-// from https://github.com/nopnop2002/Arduino-STM32-CAN/tree/master/stm32f103
 //-----------------------------------------------------------------------------
 #include "CANBus.h"
 #include <assert.h>
@@ -19,7 +18,7 @@ const long interval = 1000;           // transmission interval (milliseconds)
  * Print registers.
 */ 
 void printRegister(const char * buf, uint32_t reg) {
-  #ifdef CAN_DEBUG
+  #ifdef DEBUG_CAN
   DEBUG(buf);
   DEBUG2(reg, HEX);
   DEBUGLN();
@@ -250,12 +249,12 @@ bool CANInit(BITRATE bitrate, int remap) {
     }
     delayMicroseconds(1000);
   }
-  //Serial.print("can2=");
-  //Serial.println(can2);
+  //DEBUG("can2=");
+  //DEBUGLN(can2);
   if (can2) {
-    Serial.println("CAN2 initialize ok");
+    DEBUGLN("CAN2 initialize ok");
   } else {
-    Serial.println("CAN2 initialize fail!!");
+    DEBUGLN("CAN2 initialize fail!!");
   }
 
   bool can1 = false;
@@ -270,12 +269,12 @@ bool CANInit(BITRATE bitrate, int remap) {
     }
     delayMicroseconds(1000);
   }
-  //Serial.print("can1=");
-  //Serial.println(can1);
+  //DEBUG("can1=");
+  //DEBUGLN(can1);
   if (can1) {
-    Serial.println("CAN1 initialize ok");
+    DEBUGLN("CAN1 initialize ok");
   } else {
-    Serial.println("CAN1 initialize fail!!");
+    DEBUGLN("CAN1 initialize fail!!");
     return false;
   }
   return true;
@@ -295,9 +294,9 @@ bool CANInit(BITRATE bitrate, int remap) {
  * Decodes CAN messages from the data registers and populates a 
  * CAN message struct with the data fields.
  * 
- * @preconditions     - A valid CAN message is received
- * @params CAN_rx_msg - CAN message structure for reception
- * 
+ * @preconditions A valid CAN message is received
+ * @param ch channel 1 or 2
+ * @param CAN_rx_msg CAN message structure for reception
  */
 void CANReceive(uint8_t ch, CAN_msg_t* CAN_rx_msg) {
   if(ch == 1) {
@@ -372,17 +371,17 @@ void CANReceive(uint8_t ch, CAN_msg_t* CAN_rx_msg) {
  * Encodes CAN messages using the CAN message struct and populates the 
  * data registers with the sent.
  * 
- * @params CAN_tx_msg - CAN message structure for transmission
- * 
+ * @param ch channel 1 or 2
+ * @param CAN_tx_msg CAN message structure for transmission
+ * @returns true if succeeds
  */
 bool CANSend(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
   volatile int count = 0;
 
   uint32_t out = 0;
-  if (CAN_tx_msg->format == EXTENDED_FORMAT) { // Extended frame format
+  if (CAN_tx_msg->format == EXTENDED_FORMAT) {  // Extended frame format
       out = ((CAN_tx_msg->id & CAN_EXT_ID_MASK) << 3U) | STM32_CAN_TIR_IDE;
-  }
-  else {                                       // Standard frame format
+  } else {  // Standard frame format
       out = ((CAN_tx_msg->id & CAN_STD_ID_MASK) << 21U);
   }
 
@@ -412,12 +411,15 @@ bool CANSend(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
 
     // The mailbox don't becomes empty while loop
     if (CAN1->sTxMailBox[0].TIR & 0x1UL) {
-      Serial.println("Send Fail");
-      Serial.println(CAN1->ESR);
-      Serial.println(CAN1->MSR);
-      Serial.println(CAN1->TSR);
+      #ifdef CAN_REPORT_FAIL
+      DEBUGLN("Send Fail");
+      DEBUGLN(CAN1->ESR);
+      DEBUGLN(CAN1->MSR);
+      DEBUGLN(CAN1->TSR);
+      #endif
       return false;
     }
+    return true;
   } // end CAN1
 
   if (ch == 2) {
@@ -441,21 +443,26 @@ bool CANSend(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
 
     // The mailbox don't becomes empty while loop
     if (CAN2->sTxMailBox[0].TIR & 0x1UL) {
-      Serial.println("Send Fail");
-      Serial.println(CAN1->ESR);
-      Serial.println(CAN1->MSR);
-      Serial.println(CAN1->TSR);
+      #ifdef CAN_REPORT_FAIL
+      DEBUGLN("Send Fail");
+      DEBUGLN(CAN2->ESR);
+      DEBUGLN(CAN2->MSR);
+      DEBUGLN(CAN2->TSR);
+      #endif
       return false;
     }
+    return true;
   } // end CAN2
-return true;
+
+  // invalid channel selection
+  return false;
 }
 
  /**
  * Returns whether there are CAN messages available.
  *
+ * @param ch channel 1 or 2
  * @returns If pending CAN messages are in the CAN controller
- *
  */
 uint8_t CANMsgAvail(uint8_t ch) {
   if (ch == 1) {
@@ -477,11 +484,11 @@ int canR=0;
 int canG=0;
 int canB=0;
 int countS=0;
-int countR=0;
+int countG=0;
+
 
 void CANsetup() {
   DEBUGLN(F("CANsetup()"));
-  LEDsetColor(0,0,0);
 
   pinMode(PIN_CAN_SILENT,OUTPUT);
   digitalWrite(PIN_CAN_SILENT,LOW);
@@ -505,11 +512,11 @@ void CANstep() {
 
 
 void CANreadTest() {
-  if(CANMsgAvail(0)) {
+  if(CANMsgAvail(CAN_ACTIVE_CHANNEL)) {
     CAN_msg_t CAN_RX_msg;
-    CANReceive(&CAN_RX_msg);
-    countR = (countR+1)%2;
-    canG=(countR==1)?255:0;
+    CANReceive(CAN_ACTIVE_CHANNEL,&CAN_RX_msg);
+    countG = (countG+1)%2;
+    canG=(countG==1)?255:0;
   }
 }
 
@@ -535,8 +542,8 @@ void CANwriteTest() {
     CAN_TX_msg.data[2] = samesies[2];
     CAN_TX_msg.data[3] = samesies[3];
 
-    if(!CANSend(0,&CAN_TX_msg)) canR=255;
-    else canR=0;
+    
+    canR = CANSend(CAN_ACTIVE_CHANNEL,&CAN_TX_msg) ? 0 : 255;
   }
 }
 #endif

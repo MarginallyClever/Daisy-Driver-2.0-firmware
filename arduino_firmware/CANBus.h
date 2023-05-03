@@ -4,7 +4,11 @@
 // from https://github.com/nopnop2002/Arduino-STM32-CAN/blob/master/stm32f407/stm32f407.ino
 //-----------------------------------------------------------------------------
 
-//#define CAN_DEBUG  // uncomment to turn on serial debugging
+// stm32f405 has two channels.  Valid values are 1 or 2
+// Channel 1 is pins PB8/PB9, so that's the only good setting for this board.
+#define CAN_ACTIVE_CHANNEL 1  
+
+//-----------------------------------------------------------------------------
 
 /* Symbolic names for bit rate of CAN message                                */
 typedef enum {CAN_50KBPS, CAN_100KBPS, CAN_125KBPS, CAN_250KBPS, CAN_500KBPS, CAN_1000KBPS} BITRATE;
@@ -101,26 +105,27 @@ extern bool CANInit(BITRATE bitrate, int remap);
  * CAN message struct with the data fields.
  * 
  * @preconditions A valid CAN message is received
- * @params CAN_rx_msg - CAN message structure for reception
+ * @param ch channel 1 or 2
+ * @param CAN_rx_msg - CAN message structure for reception
  */
-extern void CANReceive(CAN_msg_t* CAN_rx_msg);
+extern void CANReceive(uint8_t ch,CAN_msg_t* CAN_rx_msg);
  
 /**
  * Encodes CAN messages using the CAN message struct and populates the 
  * data registers with the sent.
  * 
- * @params CAN_tx_msg - CAN message structure for transmission
- * 
+ * @param ch channel 1 or 2
+ * @param CAN_tx_msg - CAN message structure for transmission
  */
-extern bool CANSend(CAN_msg_t* CAN_tx_msg);
+extern bool CANSend(uint8_t ch,CAN_msg_t* CAN_tx_msg);
 
 /**
  * Returns whether there are CAN messages available.
  *
+ * @param ch channel 1 or 2
  * @returns If pending CAN messages are in the CAN controller
- *
  */
-extern uint8_t CANMsgAvail(void);
+extern uint8_t CANMsgAvail(uint8_t ch);
 
 
 extern void CANsetup();
