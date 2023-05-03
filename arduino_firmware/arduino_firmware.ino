@@ -6,6 +6,11 @@
 // set tools > board to "Generic stm32f4 series"
 // set tools > board part number to "Black F407VE"
 // set tools > usb support to "CDC (generic 'Serial' supercedes U(S)ART)"
+//
+// Note:
+// if you have a JTAG programmer connected PC->JTAG->PCB and disconnect the 
+// PC -> JTAG, don't be surprised if it fails to boot.  You must disconnect
+// JTAG -> PCB.  
 //-----------------------------------------------------------------------------
 #include "config.h"
 
@@ -15,7 +20,6 @@ void setup() {
     // serial must be first for enumeration.
     SERIALsetup();
   #endif
-  printCANPins();
   MEMORYsetup();
   #ifdef BUILD_CANBUS
     CANsetup();
@@ -23,16 +27,17 @@ void setup() {
   LEDsetup();
   SENSORsetup();
   MOTORsetup();
+  printCANPins();
 }
 
 
 void readCANAddress() {
-  pinMode(PIN_CAN_ADDR0,INPUT);
-  pinMode(PIN_CAN_ADDR1,INPUT);
-  pinMode(PIN_CAN_ADDR2,INPUT);
-  pinMode(PIN_CAN_ADDR3,INPUT);
-  pinMode(PIN_CAN_ADDR4,INPUT);
-  pinMode(PIN_CAN_ADDR5,INPUT);
+  pinMode(PIN_CAN_ADDR0,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR1,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR2,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR3,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR4,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR5,INPUT_PULLUP);
 
   CANBusAddress = ((uint8_t)digitalRead(PIN_CAN_ADDR0) << 0)
                 | ((uint8_t)digitalRead(PIN_CAN_ADDR1) << 1)
