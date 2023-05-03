@@ -4,6 +4,8 @@
 #include "CANBus.h"
 #include <assert.h>
 
+#define CAN_SEND_DELAY 1000000
+
 CAN_bit_timing_config_t can_configs[6] = {{2, 12, 56}, {2, 12, 28}, {2, 13, 21}, {2, 11, 12}, {2, 11, 6}, {1, 5, 6}};
 
 uint8_t CANBusAddress;
@@ -407,7 +409,7 @@ bool CANSend(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
     CAN1->sTxMailBox[0].TIR = out | STM32_CAN_TIR_TXRQ;
 
     // Wait until the mailbox is empty
-    while(CAN1->sTxMailBox[0].TIR & 0x1UL && count++ < 1000000);
+    while(CAN1->sTxMailBox[0].TIR & 0x1UL && count++ < CAN_SEND_DELAY);
 
     // The mailbox don't becomes empty while loop
     if (CAN1->sTxMailBox[0].TIR & 0x1UL) {
@@ -439,7 +441,7 @@ bool CANSend(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
     CAN2->sTxMailBox[0].TIR = out | STM32_CAN_TIR_TXRQ;
 
     // Wait until the mailbox is empty
-    while(CAN2->sTxMailBox[0].TIR & 0x1UL && count++ < 1000000);
+    while(CAN2->sTxMailBox[0].TIR & 0x1UL && count++ < CAN_SEND_DELAY);
 
     // The mailbox don't becomes empty while loop
     if (CAN2->sTxMailBox[0].TIR & 0x1UL) {
@@ -521,6 +523,8 @@ void CANreadTest() {
 }
 
 
+// tested double > buffer using using https://gregstoll.com/~gregstoll/floattohex/
+// sends the angle in big-endian format.
 void CANwriteTest() {
   unsigned long currentMillis = millis();
   const long interval = 100;           // transmission interval (milliseconds)
@@ -532,15 +536,27 @@ void CANwriteTest() {
     canB=(countS==1)?255:0;
 
     CAN_msg_t CAN_TX_msg;
-    CAN_TX_msg.id = 0;// (0x1<<7) + CANBusAddress;
+    CAN_TX_msg.id = (0x1<<7) + CANBusAddress;
     CAN_TX_msg.format = STANDARD_FORMAT;
     CAN_TX_msg.type = DATA_FRAME;
-    CAN_TX_msg.len = 4;
-    int32_t *samesies = (int32_t*)&sensorAngle;
+    CAN_TX_msg.len = 8;
+    uint8_t *samesies = (uint8_t*)&sensorAngle;
     CAN_TX_msg.data[0] = samesies[0];
     CAN_TX_msg.data[1] = samesies[1];
     CAN_TX_msg.data[2] = samesies[2];
     CAN_TX_msg.data[3] = samesies[3];
+    CAN_TX_msg.data[4] = samesies[4];
+    CAN_TX_msg.data[5] = samesies[5];
+    CAN_TX_msg.data[6] = samesies[6];
+    CAN_TX_msg.data[7] = samesies[7];
+
+#ifdef DEBUG_CAN
+    DEBUG("Sending ");
+    for(int i=0;i<8;++i) {
+      DEBUG2(CAN_TX_msg.data[i],HEX);
+    }
+    DEBUGLN("");
+#endif
 
     
     canR = CANSend(CAN_ACTIVE_CHANNEL,&CAN_TX_msg) ? 0 : 255;
