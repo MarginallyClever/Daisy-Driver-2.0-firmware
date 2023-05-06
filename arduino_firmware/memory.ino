@@ -33,8 +33,8 @@ bool MEMORYload() {
     return false;
   }
 
-   EEPROM.get(ePos,CANBusAddress);
-   ePos+=sizeof(CANBusAddress);
+   //EEPROM.get(ePos,value0);
+   //ePos+=sizeof(value0);
 
   return true;
 }
@@ -49,13 +49,13 @@ void MEMORYsave() {
   EEPROM.put(ePos,storedVersion);
    ePos+=sizeof(storedVersion);
 
-  EEPROM.put(ePos,CANBusAddress);
-   ePos+=sizeof(CANBusAddress);
+  //EEPROM.put(ePos,value0);
+  //ePos+=sizeof(value0);
 }
 
 
 // load default values into memory
 void MEMORYreset() {
   DEBUG(F("EEPROM reset..."));
-  CANBusAddress = DEFAULT_CANBUS_ADDRESS;
+  //value0 = DEFAULT_VALUE;
 }
