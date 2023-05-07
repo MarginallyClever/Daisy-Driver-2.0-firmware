@@ -47,16 +47,11 @@
 #define PIN_CAN_ADDR5 PC5
 
 // all other pins
-#define PIN_SWD_SWO   PB3
-#define PIN_SWD_SWDIO PA13
-#define PIN_SWD_CLK   PA14
-
+#define PIN_SWD_SWO PB3
 #define PIN_VBUS_DET PA9
-
-#define PIN_NRST     7 // NRST
-
-#define PIN_BOOT0    BOOT0
-#define PIN_BOOT1    PB_2
+#define PIN_NRST NRST
+#define PIN_BOOT0 BOOT0
+#define PIN_BOOT1 PB_2
 
 #define PIN_USART_TX PC10
 #define PIN_USART_RX PC11
@@ -67,3 +62,5 @@
 #define PIN_MCU_USB_DNEG PA11
 #define PIN_MCU_USB_DPOS PA12
 
+#define PIN_SWD_SWDIO PA13
+#define PIN_SWD_CLK PA14

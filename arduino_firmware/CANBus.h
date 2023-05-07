@@ -37,16 +37,18 @@ typedef enum {DATA_FRAME = 0, REMOTE_FRAME}         CAN_FRAME;
 
 //-----------------------------------------------------------------------------
 
-typedef struct {
-  uint32_t id;        // 29 bit identifier
-  uint8_t  data[8];   // Data field
-  uint8_t  len;       // Length of data field in bytes
-  uint8_t  ch;        // Object channel(Not use)
-  uint8_t  format;    // 0 - STANDARD, 1- EXTENDED IDENTIFIER
-  uint8_t  type;      // 0 - DATA FRAME, 1 - REMOTE FRAME
+typedef struct
+{
+  uint32_t id;        /* 29 bit identifier                               */
+  uint8_t  data[8];   /* Data field                                      */
+  uint8_t  len;       /* Length of data field in bytes                   */
+  uint8_t  ch;        /* Object channel(Not use)                         */
+  uint8_t  format;    /* 0 - STANDARD, 1- EXTENDED IDENTIFIER            */
+  uint8_t  type;      /* 0 - DATA FRAME, 1 - REMOTE FRAME                */
 } CAN_msg_t;
 
-typedef const struct {
+typedef const struct
+{
   uint8_t TS2;
   uint8_t TS1;
   uint8_t BRP;
@@ -54,123 +56,77 @@ typedef const struct {
 
 //-----------------------------------------------------------------------------
 
-class CANBus {
-  uint8_t CANBusAddress;
-
-  /**
-  * Initializes the CAN GPIO registers.
-  *
-  * @params: addr    - Specified GPIO register address.
-  * @params: index   - Specified GPIO index.
-  * @params: speed   - Specified OSPEEDR register value.(Optional)
-  *
-  */
-  void setGpio(GPIO_TypeDef * addr, uint8_t index, uint8_t speed = 3);
-
-  // Calculation of bit timing dependent on peripheral clock rate
-  int16_t computeTimings(const uint32_t peripheral_clock_rate,
-                            const uint32_t target_bitrate,
-                            CAN_bit_timing_config_t* const out_timings);
-
-  // Print registers.
-  void printRegister(const char * buf, uint32_t reg);
-
-  /**
-  * Initializes the CAN filter registers.
-  *
-  * @preconditions   - This register can be written only when the filter initialization mode is set (FINIT=1) in the CAN_FMR register.
-  * @params: index   - Specified filter index. index 27:14 are available in connectivity line devices only.
-  * @params: scale   - Select filter scale.
-  *                    0: Dual 16-bit scale configuration
-  *                    1: Single 32-bit scale configuration
-  * @params: mode    - Select filter mode.
-  *                    0: Two 32-bit registers of filter bank x are in Identifier Mask mode
-  *                    1: Two 32-bit registers of filter bank x are in Identifier List mode
-  * @params: fifo    - Select filter assigned.
-  *                    0: Filter assigned to FIFO 0
-  *                    1: Filter assigned to FIFO 1
-  * @params: bank1   - Filter bank register 1
-  * @params: bank2   - Filter bank register 2
-  */
-  void setFilter(uint8_t index, uint8_t scale, uint8_t mode, uint8_t fifo, uint32_t bank1, uint32_t bank2);
-
-  /**
-  * Decodes CAN messages from the data registers and populates a 
-  * CAN message struct with the data fields.
-  * 
-  * @preconditions A valid CAN message is received
-  * @param ch channel 1 or 2
-  * @param CAN_rx_msg - CAN message structure for reception
-  */
-  void receive(uint8_t ch,CAN_msg_t* CAN_rx_msg);
-  
-  /**
-  * Encodes CAN messages using the CAN message struct and populates the 
-  * data registers with the sent.
-  * 
-  * @param ch channel 1 or 2
-  * @param CAN_tx_msg - CAN message structure for transmission
-  */
-  bool send(uint8_t ch,CAN_msg_t* CAN_tx_msg);
-
-  /**
-  * Returns whether there are CAN messages available.
-  *
-  * @param ch channel 1 or 2
-  * @returns If pending CAN messages are in the CAN controller
-  */
-  uint8_t available(uint8_t ch);
-
-
-  public:
-
-
-  /**
-  * Initializes the CAN controller with specified bit rate.
-  *
-  * @params: bitrate - Specified bitrate. If this value is not one of the defined constants, bit rate will be defaulted to 125KBS
-  * @params: remap   - Select CAN port. 
-  *                    =0:CAN_RX mapped to PA11, CAN_TX mapped to PA12
-  *                    =1:Not used
-  *                    =2:CAN_RX mapped to PB8, CAN_TX mapped to PB9 (not available on 36-pin package)
-  *                    =3:CAN_RX mapped to PD0, CAN_TX mapped to PD1 (available on 100-pin and 144-pin package)
-  */
-  bool init(BITRATE bitrate, int remap);
-
-  /**
-  * Decodes CAN messages from the data registers and populates a 
-  * CAN message struct with the data fields.
-  * 
-  * @preconditions A valid CAN message is received
-  * @param CAN_rx_msg - CAN message structure for reception
-  */
-  void receive(CAN_msg_t* CAN_rx_msg);
-  
-  /**
-  * Encodes CAN messages using the CAN message struct and populates the 
-  * data registers with the sent.
-  * 
-  * @param CAN_tx_msg - CAN message structure for transmission
-  */
-  bool send(CAN_msg_t* CAN_tx_msg);
-
-  /**
-  * @returns If pending CAN messages are in the CAN controller
-  */
-  uint8_t available();
-
-  void readAddress();
-  void setup();
-  void step();
-
-  void readTest();
-  void writeTest();
-
-  uint8_t getAddress() {
-    return CANBusAddress;
-  }
-};
+extern uint8_t CANBusAddress;
 
 //-----------------------------------------------------------------------------
 
-extern CANBus CANbus;
+// Calculation of bit timing dependent on peripheral clock rate
+extern int16_t CANComputeTimings(const uint32_t peripheral_clock_rate,
+                          const uint32_t target_bitrate,
+                          CAN_bit_timing_config_t* const out_timings);
+
+// Print registers.
+extern void CANPrintRegister(const char * buf, uint32_t reg);
+
+/**
+ * Initializes the CAN filter registers.
+ *
+ * @preconditions   - This register can be written only when the filter initialization mode is set (FINIT=1) in the CAN_FMR register.
+ * @params: index   - Specified filter index. index 27:14 are available in connectivity line devices only.
+ * @params: scale   - Select filter scale.
+ *                    0: Dual 16-bit scale configuration
+ *                    1: Single 32-bit scale configuration
+ * @params: mode    - Select filter mode.
+ *                    0: Two 32-bit registers of filter bank x are in Identifier Mask mode
+ *                    1: Two 32-bit registers of filter bank x are in Identifier List mode
+ * @params: fifo    - Select filter assigned.
+ *                    0: Filter assigned to FIFO 0
+ *                    1: Filter assigned to FIFO 1
+ * @params: bank1   - Filter bank register 1
+ * @params: bank2   - Filter bank register 2
+ */
+extern void CANSetFilter(uint8_t index, uint8_t scale, uint8_t mode, uint8_t fifo, uint32_t bank1, uint32_t bank2);
+
+/**
+ * Initializes the CAN controller with specified bit rate.
+ *
+ * @params: bitrate - Specified bitrate. If this value is not one of the defined constants, bit rate will be defaulted to 125KBS
+ * @params: remap   - Select CAN port. 
+ *                    =0:CAN_RX mapped to PA11, CAN_TX mapped to PA12
+ *                    =1:Not used
+ *                    =2:CAN_RX mapped to PB8, CAN_TX mapped to PB9 (not available on 36-pin package)
+ *                    =3:CAN_RX mapped to PD0, CAN_TX mapped to PD1 (available on 100-pin and 144-pin package)
+ */
+extern bool CANInit(BITRATE bitrate, int remap);
+
+
+/**
+ * Decodes CAN messages from the data registers and populates a 
+ * CAN message struct with the data fields.
+ * 
+ * @preconditions A valid CAN message is received
+ * @param ch channel 1 or 2
+ * @param CAN_rx_msg - CAN message structure for reception
+ */
+extern void CANReceive(uint8_t ch,CAN_msg_t* CAN_rx_msg);
+ 
+/**
+ * Encodes CAN messages using the CAN message struct and populates the 
+ * data registers with the sent.
+ * 
+ * @param ch channel 1 or 2
+ * @param CAN_tx_msg - CAN message structure for transmission
+ */
+extern bool CANSend(uint8_t ch,CAN_msg_t* CAN_tx_msg);
+
+/**
+ * Returns whether there are CAN messages available.
+ *
+ * @param ch channel 1 or 2
+ * @returns If pending CAN messages are in the CAN controller
+ */
+extern uint8_t CANMsgAvail(uint8_t ch);
+
+
+extern void CANsetup();
+extern void CANstep();

@@ -37,8 +37,6 @@
   #define DEBUGLN(x)      NOP
 #endif
 
-//-----------------------------------------------------------------------------
-
 #include "pins.h"
 #include "serial.h"
 #include "CANBus.h"
@@ -46,4 +44,3 @@
 #include "sensor.h"
 #include "motor.h"
 #include "led.h"
-#include "CANOpen.h"
