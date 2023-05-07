@@ -49,6 +49,8 @@ extern "C" {
 
 /* USER CODE END EM */
 
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -71,18 +73,24 @@ void Error_Handler(void);
 #define CAN_ADDR2_GPIO_Port GPIOC
 #define CAN_ADDR3_Pin GPIO_PIN_3
 #define CAN_ADDR3_GPIO_Port GPIOC
-#define ADC_IPS_COS_Pin GPIO_PIN_0
-#define ADC_IPS_COS_GPIO_Port GPIOA
-#define ADC_IPS_COSN_Pin GPIO_PIN_1
-#define ADC_IPS_COSN_GPIO_Port GPIOA
-#define ADC_IPS_SIN_Pin GPIO_PIN_2
-#define ADC_IPS_SIN_GPIO_Port GPIOA
-#define ADC_IPS_SINN_Pin GPIO_PIN_3
-#define ADC_IPS_SINN_GPIO_Port GPIOA
+#define IPS_COS_Pin GPIO_PIN_0
+#define IPS_COS_GPIO_Port GPIOA
+#define IPS_COSN_Pin GPIO_PIN_1
+#define IPS_COSN_GPIO_Port GPIOA
+#define IPS_SIN_Pin GPIO_PIN_2
+#define IPS_SIN_GPIO_Port GPIOA
+#define IPS_SINN_Pin GPIO_PIN_3
+#define IPS_SINN_GPIO_Port GPIOA
+#define TMC_CS_Pin GPIO_PIN_4
+#define TMC_CS_GPIO_Port GPIOA
 #define CAN_ADDR4_Pin GPIO_PIN_4
 #define CAN_ADDR4_GPIO_Port GPIOC
 #define CAN_ADDR5_Pin GPIO_PIN_5
 #define CAN_ADDR5_GPIO_Port GPIOC
+#define STEP_EN_Pin GPIO_PIN_0
+#define STEP_EN_GPIO_Port GPIOB
+#define BOOT1_Pin GPIO_PIN_2
+#define BOOT1_GPIO_Port GPIOB
 #define TMC_DIR_Pin GPIO_PIN_12
 #define TMC_DIR_GPIO_Port GPIOB
 #define TMC_STEP_Pin GPIO_PIN_13
@@ -93,18 +101,14 @@ void Error_Handler(void);
 #define TMC_STEP_GATE_GPIO_Port GPIOB
 #define PWM_TMC_CURRSET_Pin GPIO_PIN_6
 #define PWM_TMC_CURRSET_GPIO_Port GPIOC
-#define PWM_RGB_G_Pin GPIO_PIN_7
-#define PWM_RGB_G_GPIO_Port GPIOC
-#define PWM_RGB_R_Pin GPIO_PIN_8
-#define PWM_RGB_R_GPIO_Port GPIOC
-#define PWM_RGB_B_Pin GPIO_PIN_9
-#define PWM_RGB_B_GPIO_Port GPIOC
-#define SWD_CLK_Pin GPIO_PIN_14
-#define SWD_CLK_GPIO_Port GPIOA
+#define RGB_G_Pin GPIO_PIN_7
+#define RGB_G_GPIO_Port GPIOC
+#define RGB_R_Pin GPIO_PIN_8
+#define RGB_R_GPIO_Port GPIOC
+#define RGB_B_Pin GPIO_PIN_9
+#define RGB_B_GPIO_Port GPIOC
 #define TMC_STEP_RDY_Pin GPIO_PIN_15
 #define TMC_STEP_RDY_GPIO_Port GPIOA
-#define SWD_SWO_Pin GPIO_PIN_3
-#define SWD_SWO_GPIO_Port GPIOB
 #define CAN_SILENT_Pin GPIO_PIN_5
 #define CAN_SILENT_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */

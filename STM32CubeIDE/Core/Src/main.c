@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "CO_app_STM32.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,11 +48,14 @@ I2C_HandleTypeDef hi2c2;
 
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim8;
+
 UART_HandleTypeDef huart4;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
+uint8_t canAddress=255;
 
 /* USER CODE END PV */
 
@@ -61,17 +64,24 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_CAN1_Init(void);
-static void MX_I2C1_Init(void);
+static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_TIM8_Init(void);
+static void MX_I2C1_Init(void);
 static void MX_UART4_Init(void);
-static void MX_USB_OTG_FS_PCD_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/* Timer interrupt function executes every 1 ms */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
+    if (htim == canopenNodeSTM32->timerHandle) {
+        canopen_app_interrupt();
+    }
+}
 
 /* USER CODE END 0 */
 
@@ -98,6 +108,21 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  GPIO_PinState pinState0 = HAL_GPIO_ReadPin(CAN_ADDR0_GPIO_Port,CAN_ADDR0_Pin);
+  GPIO_PinState pinState1 = HAL_GPIO_ReadPin(CAN_ADDR1_GPIO_Port,CAN_ADDR1_Pin);
+  GPIO_PinState pinState2 = HAL_GPIO_ReadPin(CAN_ADDR2_GPIO_Port,CAN_ADDR2_Pin);
+  GPIO_PinState pinState3 = HAL_GPIO_ReadPin(CAN_ADDR3_GPIO_Port,CAN_ADDR3_Pin);
+  GPIO_PinState pinState4 = HAL_GPIO_ReadPin(CAN_ADDR4_GPIO_Port,CAN_ADDR4_Pin);
+  GPIO_PinState pinState5 = HAL_GPIO_ReadPin(CAN_ADDR5_GPIO_Port,CAN_ADDR5_Pin);
+
+  canAddress =
+		  ((pinState0==GPIO_PIN_SET)<<0) |
+		  ((pinState1==GPIO_PIN_SET)<<1) |
+		  ((pinState2==GPIO_PIN_SET)<<2) |
+		  ((pinState3==GPIO_PIN_SET)<<3) |
+		  ((pinState4==GPIO_PIN_SET)<<4) |
+		  ((pinState5==GPIO_PIN_SET)<<5);
+
 
   /* USER CODE END SysInit */
 
@@ -105,13 +130,20 @@ int main(void)
   MX_GPIO_Init();
   MX_ADC1_Init();
   MX_CAN1_Init();
-  MX_I2C1_Init();
+  MX_USB_OTG_FS_PCD_Init();
   MX_I2C2_Init();
   MX_SPI1_Init();
+  MX_TIM8_Init();
+  MX_I2C1_Init();
   MX_UART4_Init();
-  MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
-
+  CANopenNodeSTM32 canOpenNodeSTM32;
+  canOpenNodeSTM32.CANHandle = &hcan1;
+  canOpenNodeSTM32.HWInitFunction = MX_CAN1_Init;
+  canOpenNodeSTM32.timerHandle = &htim8;
+  canOpenNodeSTM32.desiredNodeID = canAddress;
+  canOpenNodeSTM32.baudrate = 875;
+  canopen_app_init(&canOpenNodeSTM32);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -119,7 +151,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	  canopen_app_process();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -142,15 +174,14 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 192;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -160,12 +191,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
@@ -192,7 +223,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -367,6 +398,83 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM8 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM8_Init(void)
+{
+
+  /* USER CODE BEGIN TIM8_Init 0 */
+
+  /* USER CODE END TIM8_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM8_Init 1 */
+
+  /* USER CODE END TIM8_Init 1 */
+  htim8.Instance = TIM8;
+  htim8.Init.Prescaler = 0;
+  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim8.Init.Period = 65535;
+  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim8.Init.RepetitionCounter = 0;
+  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim8, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM8_Init 2 */
+
+  /* USER CODE END TIM8_Init 2 */
+  HAL_TIM_MspPostInit(&htim8);
+
+}
+
+/**
   * @brief UART4 Initialization Function
   * @param None
   * @retval None
@@ -445,33 +553,31 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, TMC_SKIP_Pin|TMC_STALL_Pin|PWM_TMC_CURRSET_Pin|PWM_RGB_G_Pin
-                          |PWM_RGB_R_Pin|PWM_RGB_B_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(TMC_SPI_MODE_GPIO_Port, TMC_SPI_MODE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_2|TMC_DIR_Pin|TMC_STEP_Pin
-                          |TMC_EN_Pin|TMC_STEP_GATE_Pin|SWD_SWO_Pin|CAN_SILENT_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(TMC_CS_GPIO_Port, TMC_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13|TMC_STEP_RDY_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, STEP_EN_Pin|TMC_DIR_Pin|TMC_STEP_Pin|TMC_EN_Pin
+                          |TMC_STEP_GATE_Pin|CAN_SILENT_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : TMC_SKIP_Pin TMC_STALL_Pin PWM_TMC_CURRSET_Pin PWM_RGB_G_Pin
-                           PWM_RGB_R_Pin PWM_RGB_B_Pin */
-  GPIO_InitStruct.Pin = TMC_SKIP_Pin|TMC_STALL_Pin|PWM_TMC_CURRSET_Pin|PWM_RGB_G_Pin
-                          |PWM_RGB_R_Pin|PWM_RGB_B_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*Configure GPIO pins : TMC_SKIP_Pin TMC_STALL_Pin */
+  GPIO_InitStruct.Pin = TMC_SKIP_Pin|TMC_STALL_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : TMC_SPI_MODE_Pin */
   GPIO_InitStruct.Pin = TMC_SPI_MODE_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(TMC_SPI_MODE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : CAN_ADDR0_Pin CAN_ADDR1_Pin CAN_ADDR2_Pin CAN_ADDR3_Pin
@@ -479,30 +585,36 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = CAN_ADDR0_Pin|CAN_ADDR1_Pin|CAN_ADDR2_Pin|CAN_ADDR3_Pin
                           |CAN_ADDR4_Pin|CAN_ADDR5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB0 PB2 TMC_DIR_Pin TMC_STEP_Pin
-                           TMC_EN_Pin TMC_STEP_GATE_Pin SWD_SWO_Pin CAN_SILENT_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_2|TMC_DIR_Pin|TMC_STEP_Pin
-                          |TMC_EN_Pin|TMC_STEP_GATE_Pin|SWD_SWO_Pin|CAN_SILENT_Pin;
+  /*Configure GPIO pin : TMC_CS_Pin */
+  GPIO_InitStruct.Pin = TMC_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(TMC_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : STEP_EN_Pin TMC_DIR_Pin TMC_STEP_Pin TMC_EN_Pin
+                           TMC_STEP_GATE_Pin CAN_SILENT_Pin */
+  GPIO_InitStruct.Pin = STEP_EN_Pin|TMC_DIR_Pin|TMC_STEP_Pin|TMC_EN_Pin
+                          |TMC_STEP_GATE_Pin|CAN_SILENT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA13 TMC_STEP_RDY_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_13|TMC_STEP_RDY_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*Configure GPIO pin : BOOT1_Pin */
+  GPIO_InitStruct.Pin = BOOT1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(BOOT1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SWD_CLK_Pin */
-  GPIO_InitStruct.Pin = SWD_CLK_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  /*Configure GPIO pin : TMC_STEP_RDY_Pin */
+  GPIO_InitStruct.Pin = TMC_STEP_RDY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(SWD_CLK_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(TMC_STEP_RDY_GPIO_Port, &GPIO_InitStruct);
 
 }
 
