@@ -111,6 +111,7 @@ void Error_Handler(void);
 #define TMC_STEP_RDY_GPIO_Port GPIOA
 #define CAN_SILENT_Pin GPIO_PIN_5
 #define CAN_SILENT_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

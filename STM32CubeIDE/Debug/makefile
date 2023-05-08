@@ -9,19 +9,22 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include USB_DEVICE/Target/subdir.mk
+-include USB_DEVICE/App/subdir.mk
+-include Middlewares/ST/STM32_USB_Device_Library/Core/Src/subdir.mk
+-include Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/subdir.mk
 -include Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk
--include Core/Src/CANopenNode_STM32/subdir.mk
--include Core/Src/CANopenNode/storage/subdir.mk
--include Core/Src/CANopenNode/extra/subdir.mk
--include Core/Src/CANopenNode/example/subdir.mk
--include Core/Src/CANopenNode/309/subdir.mk
--include Core/Src/CANopenNode/305/subdir.mk
--include Core/Src/CANopenNode/304/subdir.mk
--include Core/Src/CANopenNode/303/subdir.mk
--include Core/Src/CANopenNode/301/subdir.mk
--include Core/Src/CANopenNode/subdir.mk
 -include Core/Src/subdir.mk
+-include CanOpenSTM32/CANopenNode_STM32/subdir.mk
+-include CanOpenSTM32/CANopenNode/storage/subdir.mk
+-include CanOpenSTM32/CANopenNode/extra/subdir.mk
+-include CanOpenSTM32/CANopenNode/309/subdir.mk
+-include CanOpenSTM32/CANopenNode/305/subdir.mk
+-include CanOpenSTM32/CANopenNode/304/subdir.mk
+-include CanOpenSTM32/CANopenNode/303/subdir.mk
+-include CanOpenSTM32/CANopenNode/301/subdir.mk
+-include CanOpenSTM32/CANopenNode/subdir.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -71,7 +74,7 @@ main-build: Daisy\ Driver\ 3.elf secondary-outputs
 
 # Tool invocations
 Daisy\ Driver\ 3.elf Daisy\ Driver\ 3.map: $(OBJS) $(USER_OBJS) C:\Users\aggra\Desktop\robots\Sixi\ 3\actuator\ 2021-feb\arduino_firmware\Daisy-Driver-2.0-firmware\STM32CubeIDE\STM32F405RGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Daisy Driver 3.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\aggra\Desktop\robots\Sixi 3\actuator 2021-feb\arduino_firmware\Daisy-Driver-2.0-firmware\STM32CubeIDE\STM32F405RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Daisy Driver 3.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "Daisy Driver 3.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\aggra\Desktop\robots\Sixi 3\actuator 2021-feb\arduino_firmware\Daisy-Driver-2.0-firmware\STM32CubeIDE\STM32F405RGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Daisy Driver 3.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

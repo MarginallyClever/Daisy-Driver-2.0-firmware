@@ -1,0 +1,9 @@
+C:/Users/aggra/Desktop/robots/Sixi 3/actuator 2021-feb/arduino_firmware/Daisy-Driver-2.0-firmware/STM32CubeIDE/CanOpenSTM32/CANopenNode/301/CO_driver.h:744:24:CO_getUint16	24	static
+C:/Users/aggra/Desktop/robots/Sixi 3/actuator 2021-feb/arduino_firmware/Daisy-Driver-2.0-firmware/STM32CubeIDE/CanOpenSTM32/CANopenNode/301/CO_driver.h:748:24:CO_getUint32	24	static
+C:/Users/aggra/Desktop/robots/Sixi 3/actuator 2021-feb/arduino_firmware/Daisy-Driver-2.0-firmware/STM32CubeIDE/CanOpenSTM32/CANopenNode/301/CO_ODinterface.h:439:24:OD_getIndex	16	static
+C:/Users/aggra/Desktop/robots/Sixi 3/actuator 2021-feb/arduino_firmware/Daisy-Driver-2.0-firmware/STM32CubeIDE/CanOpenSTM32/CANopenNode/301/CO_ODinterface.h:588:21:OD_extension_init	16	static
+C:/Users/aggra/Desktop/robots/Sixi 3/actuator 2021-feb/arduino_firmware/Daisy-Driver-2.0-firmware/STM32CubeIDE/CanOpenSTM32/CANopenNode/301/CO_ODinterface.h:664:21:OD_get_u32	32	static
+../CanOpenSTM32/CANopenNode/301/CO_TIME.c:39:13:CO_TIME_receive	32	static
+../CanOpenSTM32/CANopenNode/301/CO_TIME.c:64:14:OD_write_1012	40	static
+../CanOpenSTM32/CANopenNode/301/CO_TIME.c:92:18:CO_TIME_init	56	static
+../CanOpenSTM32/CANopenNode/301/CO_TIME.c:180:8:CO_TIME_process	48	static
