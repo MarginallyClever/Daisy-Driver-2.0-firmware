@@ -12,10 +12,20 @@
 
 //----------------------------
 
-extern int steps;
-extern float targetPosition;
+extern int32_t steps;
+
+extern uint32_t stepDelay;
+
+extern uint8_t MOTORstate;
 
 //----------------------------
 
 extern void MOTORsetup();
 extern void MOTORstep();
+extern void MOTORsetCompare(uint32_t overflow);
+
+extern void MOTORinterruptOff();
+extern void MOTORinterruptOn();
+
+extern void MOTORsetTargetPosition(float angleUnit);
+extern void MOTORsetTargetVelocity(float degPerS);
