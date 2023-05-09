@@ -9,6 +9,7 @@
 //-----------------------------------------------------------------------------
 
 #define R_SENSE 0.11f
+#define RMS_CURRENT 570 // 0.4a motors / 0.707 peak-to-peak current for TMC2130
 
 #define STEP_TIMER_IRQ_PRIO 2
 
@@ -59,7 +60,7 @@ void MOTORsetup() {
 
   driver.begin();
   driver.toff(5);           // enable StallGuard
-  driver.rms_current(500);  // Set motor RMS current
+  driver.rms_current(RMS_CURRENT);  // Set motor RMS current
   driver.microsteps(0);    // Set microsteps (0,2,4,8,16)
 
   // Toggle stealthChop
@@ -205,6 +206,9 @@ void MOTORstepInterrupt() {
 }
 
 
+/**
+ * @param angleUnit 0...1
+ */
 void MOTORsetTargetPosition(float angleUnit) {
   targetSteps = angleUnit * STEPS_PER_ROTATION;
   int32_t diff = targetSteps - steps;
