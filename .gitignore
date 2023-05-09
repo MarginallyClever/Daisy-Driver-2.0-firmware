@@ -2,3 +2,4 @@
 PCB/DaisyStepperDriver-backups/*.*
 PCB/toSend/*.*
 *.pdf
+STM32CubeIDE/Debug/*.*

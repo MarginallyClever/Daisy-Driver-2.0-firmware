@@ -152,11 +152,11 @@ void setRGBLEDOnTIM8(int r,int g,int b) {
  * @param b 0...255
  */
 void LEDSetColor(int r,int g,int b) {
-#define RGBTOLED (100.0/255.0)
+  #define RGBTOLED(x) (((double)x)*100.0/255.0)
   setRGBLEDOnTIM8(
-		  r*RGBTOLED,
-		  g*RGBTOLED,
-		  b*RGBTOLED);
+		  RGBTOLED(r),
+		  RGBTOLED(g),
+		  RGBTOLED(b));
 }
 
 
@@ -213,13 +213,16 @@ uint8_t readCanAddress() {
 
 void CANSetup() {
   canAddress = readCanAddress();
+
   CANopenNodeSTM32 canOpenNodeSTM32;
   canOpenNodeSTM32.CANHandle = &hcan1;
   canOpenNodeSTM32.HWInitFunction = MX_CAN1_Init;
   canOpenNodeSTM32.timerHandle = &htim8;
   canOpenNodeSTM32.desiredNodeID = canAddress;
-  canOpenNodeSTM32.baudrate = 125;
+  canOpenNodeSTM32.baudrate = 500;
   canopen_app_init(&canOpenNodeSTM32);
+
+  HAL_TIM_Base_Start_IT(&htim8);
 }
 
 void sensorRead() {
@@ -319,19 +322,19 @@ int main(void)
   CANSetup();
   sensorSetup();
   LEDSetup();
-  usb_printf("Hello, World!\n");
+  usb_printf("Hello, World!  My ID is %d\n",canAddress);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  sensorRead();
-	  wheel(sensorAngle*255.0/360.0);
+	sensorRead();
+	wheel(sensorAngle*255.0/360.0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //canopen_app_process();
+	//canopen_app_process();
   }
   /* USER CODE END 3 */
 }
@@ -449,7 +452,7 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 16;
+  hcan1.Init.Prescaler = 28;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan1.Init.TimeSeg1 = CAN_BS1_1TQ;
@@ -596,9 +599,9 @@ static void MX_TIM8_Init(void)
 
   /* USER CODE END TIM8_Init 1 */
   htim8.Instance = TIM8;
-  htim8.Init.Prescaler = 63;
+  htim8.Init.Prescaler = 419;
   htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim8.Init.Period = 655;
+  htim8.Init.Period = 999;
   htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim8.Init.RepetitionCounter = 0;
   htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -623,6 +626,7 @@ static void MX_TIM8_Init(void)
   {
     Error_Handler();
   }
+  sConfigOC.Pulse = 1000;
   if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
