@@ -437,7 +437,7 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
 
     // Send Go
     CAN1->sTxMailBox[0].TIR = out | STM32_CAN_TIR_TXRQ;
-
+/*
     // Wait until the mailbox is empty
     while(CAN1->sTxMailBox[0].TIR & 0x1UL && count++ < CAN_SEND_DELAY);
 
@@ -450,7 +450,7 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
       DEBUGLN(CAN1->TSR);
       #endif
       return false;
-    }
+    }*/
     return true;
   } // end CAN1
 
@@ -557,10 +557,13 @@ void CANBus::setup() {
     DEBUGLN(F("CANsetup FAILED"));
     canR=255;
   }
+
+  DEBUG("CAN address=");
+  DEBUGLN(CANbus.CANBusAddress);
 }
 
 
-void CANBus::step() {
+void CANBus::stepTest() {
   this->writeTest();
   this->readTest();
   LEDsetColor(canR,canG,canB);

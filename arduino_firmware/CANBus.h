@@ -195,8 +195,8 @@ class CANBus {
 
     void readAddress();
     void setup();
-    void step();
 
+    void stepTest();
     void readTest();
     void writeTest();
 };

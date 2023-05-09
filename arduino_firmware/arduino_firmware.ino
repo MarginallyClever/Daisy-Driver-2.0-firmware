@@ -28,12 +28,7 @@ void setup() {
   LEDsetup();
   SENSORsetup();
   MOTORsetup();
-  printCANPins();
-}
-
-void printCANPins() {
-  DEBUG("CAN address=");
-  DEBUGLN(CANbus.CANBusAddress);
+  APPsetup();
 }
 
 
@@ -47,13 +42,13 @@ void loop() {
     SERIALupdate();
   #endif
   SENSORread();
-  MOTORstep();  // TODO replace this with timer interrupt system.
 
   //CANopen::updateHeartbeat();
   APPupdate();
 
   LEDsetColor(
     cos(sensorAngleUnit*PI)*255.0f/PI,
-    sin(sensorAngleUnit*PI)*255.0f/PI,
-    CANstate);
+    MOTORstate, // sin(sensorAngleUnit*PI)*255.0f/PI,
+    CANstate
+    );
 }
