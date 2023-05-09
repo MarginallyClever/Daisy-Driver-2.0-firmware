@@ -5,4 +5,6 @@ uint8_t CANstate=0;
 
 //-----------------------------------------------------------------------------
 
-void APPupdate();
+extern void APPsetup();
+extern void APPupdate();
+extern void APPtoggleCANState();

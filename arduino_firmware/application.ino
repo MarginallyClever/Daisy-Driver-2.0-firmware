@@ -20,7 +20,12 @@ char axies[NUM_AXIES]  = {'X','Y','Z','U','V','W'};
 float nextPos[NUM_AXIES];
 float lastHeard[NUM_AXIES];
 uint32_t lastReq=0;
+float velocityDegPerS = 10;
 //-----------------------------------------------------------------------------
+
+void APPsetup() {
+  APPsetVelocity(velocityDegPerS);
+}
 
 void APPtoggleCANState() {
   CANstate = (CANstate==0? 255 : 0);
@@ -88,8 +93,11 @@ void APPreadCAN() {
       if(subIndex == CAN_SET_POSITION) {
         APPtoggleCANState();
         //Serial.print("position ");
-        targetPosition = CAN_GET_FLOAT(inbound,i) * 360.0;
+        MOTORsetTargetPosition(CAN_GET_FLOAT(inbound,i));
         //Serial.print(targetPosition);
+      } else if(subIndex == CAN_SET_VELOCITY) {
+        APPtoggleCANState();
+        MOTORsetTargetVelocity(CAN_GET_FLOAT(inbound,i));
       }
       //Serial.println();
     }
@@ -141,12 +149,15 @@ void APPrequestAllPositions() {
   APPrequestAllPositions1();
 }
 
-
+/**
+ * @param index which joint to move
+ * @param v 0...1
+ */
 void APPsendOnePosition(int index,float v) {
   if(index==0 && CANbus.CANBusAddress==0) {
     //Serial.print("APPsendOnePosition myself ");
     //Serial.println(v);
-    targetPosition = v;
+    MOTORsetTargetPosition(v);
   } else {
     //Serial.print("APPsendOnePosition ");
     //Serial.print(index);
@@ -162,18 +173,57 @@ void APPsendOnePosition(int index,float v) {
   }
 }
 
+/**
+ * @param index which joint to move
+ * @param v 0...1
+ */
+void APPsendOneVelocity(int index,float v) {
+  if(index==0 && CANbus.CANBusAddress==0) {
+    //Serial.print("APPsendOnePosition myself ");
+    //Serial.println(v);
+    velocityDegPerS = v;
+    MOTORsetTargetVelocity(v);
+  } else {
+    //Serial.print("APPsendOnePosition ");
+    //Serial.print(index);
+    //Serial.print(' ');
+    //Serial.println(v);
+    CAN_msg_t CAN_TX_msg;
+    CAN_TX_msg.id = MAKE_COB_ID(COB_SDO_RECEIVE,index);
+    CAN_START(CAN_TX_msg);
+    CAN_ADD_LONG(CAN_TX_msg,CAN_SET);
+    CAN_ADD_SHORT(CAN_TX_msg,CAN_SET_VELOCITY);
+    CAN_ADD_FLOAT(CAN_TX_msg,v);
+    CANbus.send(&CAN_TX_msg);
+  }
+}
+
 
 void APPrapidMove() {
   Serial.println("APPrapidMove");
+  // velocity
+  int pos = seen('F');
+  if(pos>=0) APPsetVelocity(atof(serialBufferIn+pos));
+  
+  // positions
   float v;
   for(int i=0;i<NUM_AXIES;++i) {
-    int pos = seen(axies[i]);
+    pos = seen(axies[i]);
     if(pos>=0) {
-      v = atof(serialBufferIn+pos)/360.0;
+      v = atof(serialBufferIn+pos);
+      Serial.print(' ');
+      Serial.print(axies[i]);
+      Serial.print(v);
+      v /= 360.0;
       nextPos[i] = v;
       APPsendOnePosition(i,v);
     }
   }
+
+  Serial.print(' ');
+  Serial.print('F');
+  Serial.print(velocityDegPerS);
+  Serial.println();
 }
 
 
@@ -184,6 +234,10 @@ void APPreportAllMotorPositions() {
     Serial.print(axies[i]);
     Serial.print(lastHeard[i],2);
   }
+
+  Serial.print(' ');
+  Serial.print('F');
+  Serial.print(velocityDegPerS);
   Serial.println();
 }
 
@@ -203,4 +257,10 @@ void APPserverUpdate() {
 void APPupdate() {
   APPreadCAN();
   APPserverUpdate();
+}
+
+void APPsetVelocity(float newVel) {
+  for(int i=0;i<NUM_AXIES;++i) {
+    APPsendOneVelocity(i,newVel);
+  }
 }
