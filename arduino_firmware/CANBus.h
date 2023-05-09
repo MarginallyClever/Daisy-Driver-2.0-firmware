@@ -37,8 +37,7 @@ typedef enum {DATA_FRAME = 0, REMOTE_FRAME}         CAN_FRAME;
 
 //-----------------------------------------------------------------------------
 
-typedef struct
-{
+typedef struct {
   uint32_t id;        /* 29 bit identifier                               */
   uint8_t  data[8];   /* Data field                                      */
   uint8_t  len;       /* Length of data field in bytes                   */
@@ -47,8 +46,7 @@ typedef struct
   uint8_t  type;      /* 0 - DATA FRAME, 1 - REMOTE FRAME                */
 } CAN_msg_t;
 
-typedef const struct
-{
+typedef const struct {
   uint8_t TS2;
   uint8_t TS1;
   uint8_t BRP;
@@ -69,17 +67,17 @@ typedef const struct
   CAN_ADD_SHORT(canMsg,((v)&0xFF));     }
 
 #define CAN_ADD_FLOAT(canMsg,v)  {  \
-  uint8_t *samesies = (uint8_t*)&sensorAngleUnit;  \
-  CAN_ADD_SHORT(canMsg,(samesies[0]));  \
-  CAN_ADD_SHORT(canMsg,(samesies[1]));  \
+  uint8_t *samesies = (uint8_t*)&(v);  \
+  CAN_ADD_SHORT(canMsg,(samesies[3]));  \
   CAN_ADD_SHORT(canMsg,(samesies[2]));  \
-  CAN_ADD_SHORT(canMsg,(samesies[3]));  }
+  CAN_ADD_SHORT(canMsg,(samesies[1]));  \
+  CAN_ADD_SHORT(canMsg,(samesies[0]));  }
 
 #define CAN_GET_SHORT(canMsg,v)  canMsg.data[v++]
 
 #define CAN_GET_LONG(canMsg,v)   ((uint16_t)CAN_GET_SHORT(canMsg,v) << 8) | ((uint16_t)CAN_GET_SHORT(canMsg,v))
 
-inline float CAN_GET_FLOAT(CAN_msg_t &canMsg,uint8_t v) {
+inline float CAN_GET_FLOAT(CAN_msg_t &canMsg,uint8_t &v) {
   uint32_t i =  (((uint32_t)CAN_GET_SHORT(canMsg,v) << 24) |  
                  ((uint32_t)CAN_GET_SHORT(canMsg,v) << 16) |  
                  ((uint32_t)CAN_GET_SHORT(canMsg,v) <<  8) |  

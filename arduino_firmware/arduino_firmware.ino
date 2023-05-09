@@ -51,4 +51,9 @@ void loop() {
 
   //CANopen::updateHeartbeat();
   APPupdate();
+
+  LEDsetColor(
+    cos(sensorAngleUnit*PI)*255.0f/PI,
+    sin(sensorAngleUnit*PI)*255.0f/PI,
+    CANstate);
 }
