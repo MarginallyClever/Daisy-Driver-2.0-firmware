@@ -4,22 +4,44 @@
 #include "CANBus.h"
 #include <assert.h>
 
+//-----------------------------------------------------------------------------
+
 #define CAN_SEND_DELAY 1000000
+
+#define STM32_CAN_TIR_TXRQ              (1U << 0U)  // Bit 0: Transmit Mailbox Request
+#define STM32_CAN_RIR_RTR               (1U << 1U)  // Bit 1: Remote Transmission Request
+#define STM32_CAN_RIR_IDE               (1U << 2U)  // Bit 2: Identifier Extension
+#define STM32_CAN_TIR_RTR               (1U << 1U)  // Bit 1: Remote Transmission Request
+#define STM32_CAN_TIR_IDE               (1U << 2U)  // Bit 2: Identifier Extension
+
+#define CAN_EXT_ID_MASK                 0x1FFFFFFFU
+#define CAN_STD_ID_MASK                 0x000007FFU
+
+//-----------------------------------------------------------------------------
 
 CAN_bit_timing_config_t can_configs[6] = {{2, 12, 56}, {2, 12, 28}, {2, 13, 21}, {2, 11, 12}, {2, 11, 6}, {1, 5, 6}};
 
-uint8_t CANBusAddress;
+
+CANBus CANbus;
+
 
 uint8_t counter = 0;
 uint8_t frameLength = 0;
-unsigned long previousMillis = 0;     // stores last time output was updated
-const long interval = 1000;           // transmission interval (milliseconds)
+uint32_t previousMillis = 0;  // stores last time output was updated
+const long interval = 1000;  // transmission interval (milliseconds)
 
+uint8_t canR=0;
+uint8_t canG=0;
+uint8_t canB=0;
+uint8_t countS=0;
+uint8_t countG=0;
+
+//-----------------------------------------------------------------------------
 
 /**
  * Print registers.
 */ 
-void printRegister(const char * buf, uint32_t reg) {
+void CANBus::printRegister(const char * buf, uint32_t reg) {
   #ifdef DEBUG_CAN
   DEBUG(buf);
   DEBUG2(reg, HEX);
@@ -35,7 +57,7 @@ void printRegister(const char * buf, uint32_t reg) {
  * @params: speed   - Specified OSPEEDR register value.(Optional)
  *
  */
-void CANSetGpio(GPIO_TypeDef * addr, uint8_t index, uint8_t speed = 3) {
+void CANBus::setGpio(GPIO_TypeDef * addr, uint8_t index, uint8_t speed) {
     uint8_t _index2 = index * 2;
     uint8_t _index4 = index * 4;
     uint8_t ofs = 0;
@@ -47,39 +69,57 @@ void CANSetGpio(GPIO_TypeDef * addr, uint8_t index, uint8_t speed = 3) {
     }
 
     uint32_t mask;
-    printRegister("GPIO_AFR(b)=", addr->AFR[1]);
+    this->printRegister("GPIO_AFR(b)=", addr->AFR[1]);
     mask = 0xF << _index4;
     addr->AFR[ofs]  &= ~mask;         // Reset alternate function
     setting = 0x9;                    // AF9
     mask = setting << _index4;
     addr->AFR[ofs]  |= mask;          // Set alternate function
-    printRegister("GPIO_AFR(a)=", addr->AFR[1]);
+    this->printRegister("GPIO_AFR(a)=", addr->AFR[1]);
 
-    printRegister("GPIO_MODER(b)=", addr->MODER);
+    this->printRegister("GPIO_MODER(b)=", addr->MODER);
     mask = 0x3 << _index2;
     addr->MODER   &= ~mask;           // Reset mode
     setting = 0x2;                    // Alternate function mode
     mask = setting << _index2;
     addr->MODER   |= mask;            // Set mode
-    printRegister("GPIO_MODER(a)=", addr->MODER);
+    this->printRegister("GPIO_MODER(a)=", addr->MODER);
 
-    printRegister("GPIO_OSPEEDR(b)=", addr->OSPEEDR);
+    this->printRegister("GPIO_OSPEEDR(b)=", addr->OSPEEDR);
     mask = 0x3 << _index2;
     addr->OSPEEDR &= ~mask;           // Reset speed
     setting = speed;
     mask = setting << _index2;
     addr->OSPEEDR |= mask;            // Set speed
-    printRegister("GPIO_OSPEEDR(a)=", addr->OSPEEDR);
+    this->printRegister("GPIO_OSPEEDR(a)=", addr->OSPEEDR);
 
-    printRegister("GPIO_OTYPER(b)=", addr->OTYPER);
+    this->printRegister("GPIO_OTYPER(b)=", addr->OTYPER);
     mask = 0x1 << index;
     addr->OTYPER  &= ~mask;           // Reset Output push-pull
-    printRegister("GPIO_OTYPER(a)=", addr->OTYPER);
+    this->printRegister("GPIO_OTYPER(a)=", addr->OTYPER);
 
-    printRegister("GPIO_PUPDR(b)=", addr->PUPDR);
+    this->printRegister("GPIO_PUPDR(b)=", addr->PUPDR);
     mask = 0x3 << _index2;
     addr->PUPDR   &= ~mask;           // Reset port pull-up/pull-down
-    printRegister("GPIO_PUPDR(a)=", addr->PUPDR);
+    this->printRegister("GPIO_PUPDR(a)=", addr->PUPDR);
+}
+
+
+void CANBus::readAddress() {
+  pinMode(PIN_CAN_ADDR0,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR1,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR2,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR3,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR4,INPUT_PULLUP);
+  pinMode(PIN_CAN_ADDR5,INPUT_PULLUP);
+
+  this->CANBusAddress = 
+      ((uint8_t)digitalRead(PIN_CAN_ADDR0) << 0)
+    | ((uint8_t)digitalRead(PIN_CAN_ADDR1) << 1)
+    | ((uint8_t)digitalRead(PIN_CAN_ADDR2) << 2)
+    | ((uint8_t)digitalRead(PIN_CAN_ADDR3) << 3)
+    | ((uint8_t)digitalRead(PIN_CAN_ADDR4) << 4)
+    | ((uint8_t)digitalRead(PIN_CAN_ADDR5) << 5);
 }
 
 
@@ -102,7 +142,7 @@ void CANSetGpio(GPIO_TypeDef * addr, uint8_t index, uint8_t speed = 3) {
  * @params: bank2   - Filter bank register 2
  *
  */
-void CANSetFilter(uint8_t index, uint8_t scale, uint8_t mode, uint8_t fifo, uint32_t bank1, uint32_t bank2) {
+void CANBus::setFilter(uint8_t index, uint8_t scale, uint8_t mode, uint8_t fifo, uint32_t bank1, uint32_t bank2) {
   if (index > 27) return;
 
   CAN1->FA1R &= ~(0x1UL<<index);               // Deactivate filter
@@ -145,7 +185,7 @@ void CANSetFilter(uint8_t index, uint8_t scale, uint8_t mode, uint8_t fifo, uint
  *                       CAN2_RX mapped to PB12, CAN2_TX mapped to PB13
  *
  */
-bool CANInit(BITRATE bitrate, int remap) {
+bool CANBus::init(BITRATE bitrate, int remap) {
   // Reference manual
   // https://www.st.com/content/ccc/resource/technical/document/reference_manual/3d/6d/5a/66/b4/99/40/d4/DM00031020.pdf/files/DM00031020.pdf/jcr:content/translations/en.DM00031020.pdf
 
@@ -155,46 +195,46 @@ bool CANInit(BITRATE bitrate, int remap) {
   if (remap == 0) {
     // CAN1
     RCC->AHB1ENR |= 0x1;                 // Enable GPIOA clock 
-    CANSetGpio(GPIOA, 11);               // Set PA11
-    CANSetGpio(GPIOA, 12);               // Set PA12
+    this->setGpio(GPIOA, 11);               // Set PA11
+    this->setGpio(GPIOA, 12);               // Set PA12
     
     // CAN2
     RCC->AHB1ENR |= 0x2;                 // Enable GPIOB clock 
-    CANSetGpio(GPIOB, 5);                // Set PB5
-    CANSetGpio(GPIOB, 6);                // Set PB6
+    this->setGpio(GPIOB, 5);                // Set PB5
+    this->setGpio(GPIOB, 6);                // Set PB6
   }
 
   if (remap == 2) {
     // CAN1
     RCC->AHB1ENR |= 0x2;                 // Enable GPIOB clock 
-    CANSetGpio(GPIOB, 8);                // Set PB8
-    CANSetGpio(GPIOB, 9);                // Set PB9
+    this->setGpio(GPIOB, 8);                // Set PB8
+    this->setGpio(GPIOB, 9);                // Set PB9
 
     // CAN2
     RCC->AHB1ENR |= 0x2;                 // Enable GPIOB clock 
-    CANSetGpio(GPIOB, 12);               // Set PB12
-    CANSetGpio(GPIOB, 13);               // Set PB13
+    this->setGpio(GPIOB, 12);               // Set PB12
+    this->setGpio(GPIOB, 13);               // Set PB13
   }
     
   if (remap == 3) {
     // CAN1
     RCC->AHB1ENR |= 0x8;                 // Enable GPIOD clock 
-    CANSetGpio(GPIOD, 0);                // Set PD0
-    CANSetGpio(GPIOD, 1);                // Set PD1
+    this->setGpio(GPIOD, 0);                // Set PD0
+    this->setGpio(GPIOD, 1);                // Set PD1
 
     // CAN2
     RCC->AHB1ENR |= 0x2;                 // Enable GPIOB clock 
-    CANSetGpio(GPIOB, 12);               // Set PB12
-    CANSetGpio(GPIOB, 13);               // Set PB13
+    this->setGpio(GPIOB, 12);               // Set PB12
+    this->setGpio(GPIOB, 13);               // Set PB13
   }
 
   CAN1->MCR |= 0x1UL;                    // Require CAN1 to Initialization mode 
   while (!(CAN1->MSR & 0x1UL));          // Wait for Initialization mode
-  printRegister("CAN1->MCR=", CAN1->MCR);
+  this->printRegister("CAN1->MCR=", CAN1->MCR);
 
   CAN2->MCR |= 0x1UL;                    // Require CAN2 to Initialization mode
   while (!(CAN2->MSR & 0x1UL));          // Wait for Initialization mode
-  printRegister("CAN2->MCR=", CAN2->MCR);
+  this->printRegister("CAN2->MCR=", CAN2->MCR);
 
   //CAN1->MCR = 0x51UL;                  // Hardware initialization(No automatic retransmission)
   CAN1->MCR = 0x41UL;                    // Hardware initialization(With automatic retransmission)
@@ -206,16 +246,16 @@ bool CANInit(BITRATE bitrate, int remap) {
   // Set bit rates 
   CAN1->BTR &= ~(((0x03) << 24) | ((0x07) << 20) | ((0x0F) << 16) | (0x1FF)); 
   CAN1->BTR |=  (((can_configs[bitrate].TS2-1) & 0x07) << 20) | (((can_configs[bitrate].TS1-1) & 0x0F) << 16) | ((can_configs[bitrate].BRP-1) & 0x1FF);
-  printRegister("CAN1->BTR=", CAN1->BTR);
+  this->printRegister("CAN1->BTR=", CAN1->BTR);
 
   CAN2->BTR &= ~(((0x03) << 24) | ((0x07) << 20) | ((0x0F) << 16) | (0x1FF)); 
   CAN2->BTR |=  (((can_configs[bitrate].TS2-1) & 0x07) << 20) | (((can_configs[bitrate].TS1-1) & 0x0F) << 16) | ((can_configs[bitrate].BRP-1) & 0x1FF);
-  printRegister("CAN2->BTR=", CAN2->BTR);
+  this->printRegister("CAN2->BTR=", CAN2->BTR);
 
   // Configure Filters to default values
   CAN1->FMR  |=   0x1UL;                 // Set to filter initialization mode
   CAN1->FMR  &= 0xFFFFC0FF;              // Clear CAN2 start bank
-  printRegister("CAN1->FMR=", CAN1->FMR);
+  this->printRegister("CAN1->FMR=", CAN1->FMR);
 
   // bxCAN has 28 filters.
   // These filters are used for both CAN1 and CAN2.
@@ -227,14 +267,14 @@ bool CANInit(BITRATE bitrate, int remap) {
   // Two 32-bit registers of filter bank x are in Identifier Mask mode
   // Filter assigned to FIFO 0 
   // Filter bank register to all 0
-  CANSetFilter(0, 1, 0, 0, 0x0UL, 0x0UL); 
+  this->setFilter(0, 1, 0, 0, 0x0UL, 0x0UL); 
 
   // Set fileter 14
   // Single 32-bit scale configuration 
   // Two 32-bit registers of filter bank x are in Identifier Mask mode
   // Filter assigned to FIFO 0 
   // Filter bank register to all 0
-  CANSetFilter(14, 1, 0, 0, 0x0UL, 0x0UL); 
+  this->setFilter(14, 1, 0, 0, 0x0UL, 0x0UL); 
 
   CAN1->FMR   &= ~(0x1UL);               // Deactivate initialization mode
 
@@ -281,16 +321,6 @@ bool CANInit(BITRATE bitrate, int remap) {
   }
   return true;
 }
-
-
-#define STM32_CAN_TIR_TXRQ              (1U << 0U)  // Bit 0: Transmit Mailbox Request
-#define STM32_CAN_RIR_RTR               (1U << 1U)  // Bit 1: Remote Transmission Request
-#define STM32_CAN_RIR_IDE               (1U << 2U)  // Bit 2: Identifier Extension
-#define STM32_CAN_TIR_RTR               (1U << 1U)  // Bit 1: Remote Transmission Request
-#define STM32_CAN_TIR_IDE               (1U << 2U)  // Bit 2: Identifier Extension
-
-#define CAN_EXT_ID_MASK                 0x1FFFFFFFU
-#define CAN_STD_ID_MASK                 0x000007FFU
  
 /**
  * Decodes CAN messages from the data registers and populates a 
@@ -300,7 +330,7 @@ bool CANInit(BITRATE bitrate, int remap) {
  * @param ch channel 1 or 2
  * @param CAN_rx_msg CAN message structure for reception
  */
-void CANReceive(uint8_t ch, CAN_msg_t* CAN_rx_msg) {
+void CANBus::receive(uint8_t ch, CAN_msg_t* CAN_rx_msg) {
   if(ch == 1) {
     uint32_t id = CAN1->sFIFOMailBox[0].RIR;
     if ((id & STM32_CAN_RIR_IDE) == 0) { // Standard frame format
@@ -377,7 +407,7 @@ void CANReceive(uint8_t ch, CAN_msg_t* CAN_rx_msg) {
  * @param CAN_tx_msg CAN message structure for transmission
  * @returns true if succeeds
  */
-bool CANSend(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
+bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
   volatile int count = 0;
 
   uint32_t out = 0;
@@ -466,7 +496,7 @@ bool CANSend(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
  * @param ch channel 1 or 2
  * @returns If pending CAN messages are in the CAN controller
  */
-uint8_t CANMsgAvail(uint8_t ch) {
+uint8_t CANBus::available(uint8_t ch) {
   if (ch == 1) {
     // Check for pending FIFO 0 messages
     return CAN1->RF0R & 0x3UL;
@@ -481,21 +511,45 @@ uint8_t CANMsgAvail(uint8_t ch) {
 }
 
 
-#ifdef BUILD_CANBUS
-int canR=0;
-int canG=0;
-int canB=0;
-int countS=0;
-int countG=0;
+/**
+ * Decodes CAN messages from the data registers and populates a 
+ * CAN message struct with the data fields.
+ * 
+ * @preconditions A valid CAN message is received
+ * @param CAN_rx_msg - CAN message structure for reception
+ */
+void CANBus::receive(CAN_msg_t* CAN_rx_msg) {
+  receive(CAN_ACTIVE_CHANNEL,CAN_rx_msg);
+}
+ 
+/**
+ * Encodes CAN messages using the CAN message struct and populates the 
+ * data registers with the sent.
+ * 
+ * @param CAN_tx_msg - CAN message structure for transmission
+ */
+bool CANBus::send(CAN_msg_t* CAN_tx_msg) {
+  return send(CAN_ACTIVE_CHANNEL,CAN_tx_msg);
+}
 
+/**
+ * Returns whether there are CAN messages available.
+ *
+ * @returns If pending CAN messages are in the CAN controller
+ */
+uint8_t CANBus::available() {
+  return available(CAN_ACTIVE_CHANNEL);
+}
 
-void CANsetup() {
+void CANBus::setup() {
   DEBUGLN(F("CANsetup()"));
 
   pinMode(PIN_CAN_SILENT,OUTPUT);
   digitalWrite(PIN_CAN_SILENT,LOW);
 
-  bool ret = CANInit(CAN_SPEED, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
+  readAddress();
+
+  bool ret = init(CAN_SPEED, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
   if(ret) {
     DEBUGLN(F("CANsetup OK"));
     canR=0;
@@ -506,17 +560,17 @@ void CANsetup() {
 }
 
 
-void CANstep() {
-  CANwriteTest();
-  CANreadTest();
+void CANBus::step() {
+  this->writeTest();
+  this->readTest();
   LEDsetColor(canR,canG,canB);
 }
 
 
-void CANreadTest() {
-  if(CANMsgAvail(CAN_ACTIVE_CHANNEL)) {
+void CANBus::readTest() {
+  if(this->available()) {
     CAN_msg_t CAN_RX_msg;
-    CANReceive(CAN_ACTIVE_CHANNEL,&CAN_RX_msg);
+    this->receive(&CAN_RX_msg);
     countG = (countG+1)%2;
     canG=(countG==1)?255:0;
   }
@@ -525,7 +579,7 @@ void CANreadTest() {
 
 // tested double > buffer using using https://gregstoll.com/~gregstoll/floattohex/
 // sends the angle in big-endian format.
-void CANwriteTest() {
+void CANBus::writeTest() {
   unsigned long currentMillis = millis();
   const long interval = 100;           // transmission interval (milliseconds)
 
@@ -536,19 +590,15 @@ void CANwriteTest() {
     canB=(countS==1)?255:0;
 
     CAN_msg_t CAN_TX_msg;
-    CAN_TX_msg.id = (0x1<<7) + CANBusAddress;
+    CAN_TX_msg.id = (0x1<<7) + this->CANBusAddress;
     CAN_TX_msg.format = STANDARD_FORMAT;
     CAN_TX_msg.type = DATA_FRAME;
     CAN_TX_msg.len = 8;
-    uint8_t *samesies = (uint8_t*)&sensorAngle;
+    uint8_t *samesies = (uint8_t*)&sensorAngleUnit;
     CAN_TX_msg.data[0] = samesies[0];
     CAN_TX_msg.data[1] = samesies[1];
     CAN_TX_msg.data[2] = samesies[2];
     CAN_TX_msg.data[3] = samesies[3];
-    CAN_TX_msg.data[4] = samesies[4];
-    CAN_TX_msg.data[5] = samesies[5];
-    CAN_TX_msg.data[6] = samesies[6];
-    CAN_TX_msg.data[7] = samesies[7];
 
 #ifdef DEBUG_CAN
     DEBUG("Sending ");
@@ -559,7 +609,6 @@ void CANwriteTest() {
 #endif
 
     
-    canR = CANSend(CAN_ACTIVE_CHANNEL,&CAN_TX_msg) ? 0 : 255;
+    canR = this->send(&CAN_TX_msg) ? 0 : 255;
   }
 }
-#endif

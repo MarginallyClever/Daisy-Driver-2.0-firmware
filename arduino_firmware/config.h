@@ -44,3 +44,5 @@
 #include "sensor.h"
 #include "motor.h"
 #include "led.h"
+#include "CANOpen.h"
+#include "application.h"

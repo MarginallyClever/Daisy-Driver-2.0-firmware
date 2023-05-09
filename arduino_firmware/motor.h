@@ -13,6 +13,7 @@
 //----------------------------
 
 extern int steps;
+extern float targetPosition;
 
 //----------------------------
 

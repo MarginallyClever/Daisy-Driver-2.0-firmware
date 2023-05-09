@@ -17,6 +17,7 @@ TMC2130Stepper driver = TMC2130Stepper(PIN_SPI1_TMC_CS, R_SENSE);  // hardware S
 // the current motor position, in steps.
 int steps = 0;
 int stepDelay = 1000;
+float targetPosition = 0;
 
 //----------------------------
 
@@ -57,7 +58,7 @@ void SPIsetup() {
 void MOTORstep() {
   double angleNow = steps / STEPS_PER_DEGREE;
   // get the difference between sensor and assumed motor position
-  double diff = sensorAngle - angleNow;
+  double diff = targetPosition - angleNow;
   if(abs(diff)<1.0) return;
 
   // set the direction

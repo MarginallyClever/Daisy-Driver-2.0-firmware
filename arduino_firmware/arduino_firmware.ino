@@ -22,7 +22,8 @@ void setup() {
   #endif
   MEMORYsetup();
   #ifdef BUILD_CANBUS
-    CANsetup();
+    CANbus.setup();
+    //CANOpen::setup();
   #endif
   LEDsetup();
   SENSORsetup();
@@ -30,34 +31,24 @@ void setup() {
   printCANPins();
 }
 
-
-void readCANAddress() {
-  pinMode(PIN_CAN_ADDR0,INPUT_PULLUP);
-  pinMode(PIN_CAN_ADDR1,INPUT_PULLUP);
-  pinMode(PIN_CAN_ADDR2,INPUT_PULLUP);
-  pinMode(PIN_CAN_ADDR3,INPUT_PULLUP);
-  pinMode(PIN_CAN_ADDR4,INPUT_PULLUP);
-  pinMode(PIN_CAN_ADDR5,INPUT_PULLUP);
-
-  CANBusAddress = ((uint8_t)digitalRead(PIN_CAN_ADDR0) << 0)
-                | ((uint8_t)digitalRead(PIN_CAN_ADDR1) << 1)
-                | ((uint8_t)digitalRead(PIN_CAN_ADDR2) << 2)
-                | ((uint8_t)digitalRead(PIN_CAN_ADDR3) << 3)
-                | ((uint8_t)digitalRead(PIN_CAN_ADDR4) << 4)
-                | ((uint8_t)digitalRead(PIN_CAN_ADDR5) << 5);
-}
-
 void printCANPins() {
-  readCANAddress();
   DEBUG("CAN address=");
-  DEBUGLN(CANBusAddress);
+  DEBUGLN(CANbus.CANBusAddress);
 }
 
 
 void loop() {
   #ifdef BUILD_CANBUS
-    CANstep();
+    if(CANbus.available()) {
+      //CANOpen::receive();
+    }
+  #endif
+  #ifdef BUILD_SERIAL
+    SERIALupdate();
   #endif
   SENSORread();
-  MOTORstep();
+  MOTORstep();  // TODO replace this with timer interrupt system.
+
+  //CANopen::updateHeartbeat();
+  APPupdate();
 }

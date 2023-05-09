@@ -13,7 +13,7 @@
 
 //----------------------------
 
-extern double sensorAngle;
+extern float sensorAngleUnit;
 
 //----------------------------
 
