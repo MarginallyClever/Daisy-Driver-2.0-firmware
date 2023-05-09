@@ -20,11 +20,11 @@ char axies[NUM_AXIES]  = {'X','Y','Z','U','V','W'};
 float nextPos[NUM_AXIES];
 float lastHeard[NUM_AXIES];
 uint32_t lastReq=0;
-float velocityDegPerS = 10;
+float velocityDegPerS = 5;
 //-----------------------------------------------------------------------------
 
 void APPsetup() {
-  APPsetVelocity(velocityDegPerS);
+  MOTORsetTargetVelocity(velocityDegPerS);
 }
 
 void APPtoggleCANState() {
@@ -88,18 +88,24 @@ void APPreadCAN() {
       int subIndex = CAN_GET_SHORT(inbound,i);
       if(subIndex == CAN_CUSTOM_PARAMETER_READ_POSITION) APPsendSensor();
     } else if( id == CAN_SET ) {
-      //Serial.print("set ");
       uint8_t subIndex = CAN_GET_SHORT(inbound,i);
       if(subIndex == CAN_SET_POSITION) {
+        float targetPosition = CAN_GET_FLOAT(inbound,i);
+
         APPtoggleCANState();
-        //Serial.print("position ");
-        MOTORsetTargetPosition(CAN_GET_FLOAT(inbound,i));
-        //Serial.print(targetPosition);
+        Serial.print("set position ");
+        Serial.println(targetPosition*360.0f);
+
+        MOTORsetTargetPosition(targetPosition);
       } else if(subIndex == CAN_SET_VELOCITY) {
+        velocityDegPerS = CAN_GET_FLOAT(inbound,i);
+
         APPtoggleCANState();
-        MOTORsetTargetVelocity(CAN_GET_FLOAT(inbound,i));
+        Serial.print("set velocity ");
+        Serial.println(velocityDegPerS);
+
+        MOTORsetTargetVelocity(velocityDegPerS);
       }
-      //Serial.println();
     }
   }
 }
@@ -182,7 +188,7 @@ void APPsendOneVelocity(int index,float v) {
     //Serial.print("APPsendOnePosition myself ");
     //Serial.println(v);
     velocityDegPerS = v;
-    MOTORsetTargetVelocity(v);
+    MOTORsetTargetVelocity(velocityDegPerS);
   } else {
     //Serial.print("APPsendOnePosition ");
     //Serial.print(index);
@@ -203,7 +209,12 @@ void APPrapidMove() {
   Serial.println("APPrapidMove");
   // velocity
   int pos = seen('F');
-  if(pos>=0) APPsetVelocity(atof(serialBufferIn+pos));
+  if(pos>=0) {
+    APPsetVelocity(atof(serialBufferIn+pos));
+    // if this delay is too small the other unit doesn't receive the positions that follow.
+    // 250 is too small.  500 works.  375 works.
+    delay(375);
+  }
   
   // positions
   float v;
