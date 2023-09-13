@@ -19,7 +19,13 @@
 #define ADDRESS_MASK 0x7F  // 0b00001111111
 
 #define COB_NMT_CONTROL 0x000
+
+// Used when a node initiates a request to either read data from or write data to a remote node.
+// Attached should be the data/command along with the object dictionary index and sub-index.
 #define COB_SDO_SEND    0x580
+
+// Used when a node responds to the request initiated by another node in the network.
+// Attached should be the requested data or acknowledgement of the data that was written.
 #define COB_SDO_RECEIVE 0x600
 
 #define MAKE_COB_ID(functionCode,address) (functionCode | address)
