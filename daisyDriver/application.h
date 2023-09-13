@@ -20,10 +20,12 @@ public:
   void toggleCANState();
   void rapidMove();
   void reportAllMotorPositions();
+  void requestAllNodeIDs();
 
 private:
   void printCANmsg(CAN_msg_t &msg);
   void readCAN();
+  void sendID();
   void sendSensor();
   void requestOnePosition(uint8_t index);
   void requestAllPositionsAtOnce();
@@ -36,6 +38,9 @@ private:
 
   void setTargetPosition(float targetPosition);
   void setTargetVelocity(float targetVelocity);
+
+  void parseReceive(CANParser &inbound);
+  void parseSend(CANParser &inbound);
 };
 
 extern Application application;

@@ -9,12 +9,11 @@
 #define CAN_SET                   0x2012
 #define CAN_READ 0x2013
 
-#define CAN_SET_CURRENT       1
-#define CAN_SET_BRAKE_CURRENT 2
-#define CAN_SET_VELOCITY      3
-#define CAN_SET_POSITION      4
-
-#define CAN_READ_POSITION 5
+#define CAN_ID            1
+#define CAN_CURRENT       2
+#define CAN_BRAKE_CURRENT 3
+#define CAN_VELOCITY      4
+#define CAN_POSITION      5
 
 #define ADDRESS_MASK 0x7F  // 0b00001111111
 
