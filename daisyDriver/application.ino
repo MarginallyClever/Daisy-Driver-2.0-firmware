@@ -29,18 +29,13 @@ void Application::readCAN() {
   CANbus.receive(&inbound.canMsg);
   //inbound.print();
 
-  uint16_t functionCode = COB_GET_FUNCTION_CODE(inbound.canMsg.id);
-  //Serial.print("available ");
-  //Serial.println(functionCode,HEX);
+  uint16_t functionCode = inbound.getFunctionCode();
+  int index = inbound.getAddress();  // for/from who?
 
-  int index = COB_GET_ADDRESS(inbound.canMsg.id);  // for/from who?
-
-  if(functionCode == COB_SDO_SEND) {
-    // someone has sent a request to read or write to a node.
-    //Serial.print("SDO send from ");
-    //Serial.println(index);
-    if(CANbus.myAddress!=0) return;  // only root can send.
-    if(index<0 || index>=NUM_AXIES) return;
+  if(functionCode == COB_SDO_RECEIVE) {
+    // someone has replied a request.
+    if(CANbus.myAddress!=0) return;  // only root can receive.
+    if(index<0 || index>=NUM_AXIES) return;  // invalid address?!
 
     uint16_t id = inbound.getLong();
     if( id == CAN_READ ) {
@@ -54,10 +49,8 @@ void Application::readCAN() {
         //Serial.println(lastHeard[index]);
       }
     }
-  } else if( functionCode == COB_SDO_RECEIVE) {
-    // someone has responded to a request from another node.
-    //Serial.print("SDO Receive ");
-    //Serial.println(index);
+  } else if( functionCode == COB_SDO_SEND) {
+    // master node has requested read/write
     if(index != ADDRESS_EVERYONE && index != CANbus.myAddress) return;  // not for everyone and not for me
     //Serial.println("For me");
 
@@ -95,11 +88,11 @@ void Application::setTargetVelocity(float targetVelocity) {
 void Application::sendSensor() {
   //Serial.println("sendSensor");
   CANParser msg;
-  msg.start(COB_SDO_SEND,CANbus.myAddress);
+  msg.start(COB_SDO_RECEIVE,CANbus.myAddress);
   msg.addLong(CAN_READ);
   msg.addShort(CAN_READ_POSITION);
   msg.addFloat(sensorAngleUnit);
-  CANbus.send(&msg.canMsg);
+  msg.send();
 }
 
 void Application::requestOnePosition(uint8_t index) {
@@ -110,10 +103,10 @@ void Application::requestOnePosition(uint8_t index) {
     //Serial.print("requestOnePosition ");
     //Serial.println(index);
     CANParser msg;
-    msg.start(COB_SDO_RECEIVE,index);
+    msg.start(COB_SDO_SEND,index);
     msg.addLong(CAN_READ);
     msg.addShort(CAN_READ_POSITION);
-    CANbus.send(&msg.canMsg);
+    msg.send();
   }
 }
 
@@ -153,7 +146,7 @@ void Application::sendOnePosition(int index,float v) {
     msg.addLong(CAN_SET);
     msg.addShort(CAN_SET_POSITION);
     msg.addFloat(v);
-    CANbus.send(&msg.canMsg);
+    msg.send();
   }
 }
 
@@ -173,11 +166,11 @@ void Application::sendOneVelocity(int index,float v) {
     //Serial.print(' ');
     //Serial.println(v);
     CANParser msg;
-    msg.start(COB_SDO_RECEIVE,index);
+    msg.start(COB_SDO_SEND,index);
     msg.addLong(CAN_SET);
     msg.addShort(CAN_SET_VELOCITY);
     msg.addFloat(v);
-    CANbus.send(&msg.canMsg);
+    msg.send();
   }
 }
 

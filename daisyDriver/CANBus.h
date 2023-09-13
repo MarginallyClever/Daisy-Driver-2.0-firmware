@@ -83,11 +83,19 @@ public:
   CAN_msg_t canMsg;
   int index=0;
 
-  void start(uint16_t a,uint16_t b) {
+  void start(uint16_t functionCode,uint16_t address) {
     canMsg.format = STANDARD_FORMAT;
     canMsg.type = DATA_FRAME;
     canMsg.len = 0;
-    canMsg.id = MAKE_COB_ID(a,b);
+    canMsg.id = MAKE_COB_ID(functionCode,address);
+  }
+
+  inline uint16_t getFunctionCode() {
+    return COB_GET_FUNCTION_CODE(canMsg.id);
+  }
+
+  inline uint16_t getAddress() {
+    return COB_GET_ADDRESS(canMsg.id);
   }
 
   inline void addShort(uint8_t v) {
@@ -131,6 +139,10 @@ public:
     //Serial.print("ch="    );  Serial.println(canMsg.ch);
     Serial.print("format=");  Serial.println(canMsg.format);
     Serial.print("type="  );  Serial.println(canMsg.type);
+  }
+
+  inline void send() {
+    CANbus.send(&canMsg);
   }
 };
 
