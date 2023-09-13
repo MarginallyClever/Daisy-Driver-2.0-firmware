@@ -117,14 +117,28 @@ private:
   void setFilter(uint8_t index, uint8_t scale, uint8_t mode, uint8_t fifo, uint32_t bank1, uint32_t bank2);
 
   /**
+     * Returns whether there are CAN messages available.
+     *
+     * @param channel 1 or 2
+     * @returns If pending CAN messages are in the CAN controller
+     */
+  uint8_t available(uint8_t channel, uint8_t fifoIndex);
+
+  /**
+   * @param channel 1 or 2
+   * @return the index of the first FIFO buffer with data ready, or -1.
+   */
+  int8_t getFirstWaitingFIFOIndex(uint8_t channel);
+
+  /**
     * Decodes CAN messages from the data registers and populates a 
     * CAN message struct with the data fields.
     * 
     * @preconditions A valid CAN message is received
-    * @param ch channel 1 or 2
+    * @param channel 1 or 2
     * @param CAN_rx_msg - CAN message structure for reception
     */
-  void receive(uint8_t ch, CAN_msg_t* CAN_rx_msg);
+  void receive(uint8_t channel, CAN_msg_t* CAN_rx_msg, uint8_t fifoIndex);
 
   /**
      * Encodes CAN messages using the CAN message struct and populates the 
@@ -134,14 +148,6 @@ private:
      * @param CAN_tx_msg - CAN message structure for transmission
      */
   bool send(uint8_t ch, CAN_msg_t* CAN_tx_msg);
-
-  /**
-     * Returns whether there are CAN messages available.
-     *
-     * @param ch channel 1 or 2
-     * @returns If pending CAN messages are in the CAN controller
-     */
-  uint8_t available(uint8_t ch);
 
   /**
      * Returns whether there are CAN messages available.
@@ -160,9 +166,8 @@ private:
   int8_t waitForOutgoingAvailableMailbox(uint8_t channel, long maxDelay);
 
 public:
-
+  // my CAN node id.
   uint8_t myAddress;
-
 
   /**
     * Initializes the CAN controller with specified bit rate.

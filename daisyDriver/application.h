@@ -21,20 +21,22 @@ public:
   void rapidMove();
   void reportAllMotorPositions();
   void requestAllNodeIDs();
+  bool iAmMaster();
 
 private:
   void printCANmsg(CAN_msg_t &msg);
   void readCAN();
   void sendID();
-  void sendSensor();
-  void requestOnePosition(uint8_t index);
-  void requestAllPositionsAtOnce();
-  void requestAllPositionsIndividually();
-  void requestAllPositions();
+  void replyOneFloat(uint8_t subIndex,float value);
+  void requestOneSensor(uint8_t index);
+  void requestAllSensorsAtOnce();
+  void requestAllSensorsIndividually();
+  void requestAllSensors();
   void sendOnePosition(int index,float v);
   void sendOneVelocity(int index,float v);
+
   void serverUpdate();
-  void setVelocity(float newVel);
+  void setAllVelocity(float newVel);
 
   void setTargetPosition(float targetPosition);
   void setTargetVelocity(float targetVelocity);

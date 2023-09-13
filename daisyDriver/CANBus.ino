@@ -262,14 +262,14 @@ bool CANBus::init(BITRATE bitrate, int remap) {
   // STM32F405 has CAN1 and CAN2, so CAN2 filters are offset by 14
   CAN1->FMR  |= 0xE00;                   // Start bank for the CAN2 interface
 
-  // Set fileter 0
+  // Set filter 0
   // Single 32-bit scale configuration 
   // Two 32-bit registers of filter bank x are in Identifier Mask mode
   // Filter assigned to FIFO 0 
   // Filter bank register to all 0
   this->setFilter(0, 1, 0, 0, 0x0UL, 0x0UL); 
 
-  // Set fileter 14
+  // Set filter 14
   // Single 32-bit scale configuration 
   // Two 32-bit registers of filter bank x are in Identifier Mask mode
   // Filter assigned to FIFO 0 
@@ -296,7 +296,7 @@ bool CANBus::init(BITRATE bitrate, int remap) {
   if (can2) {
     DEBUGLN("CAN2 initialize ok");
   } else {
-    DEBUGLN("CAN2 initialize fail!!");
+    DEBUGLN("CAN2 initialize fail");
   }
 
   bool can1 = false;
@@ -316,7 +316,7 @@ bool CANBus::init(BITRATE bitrate, int remap) {
   if (can1) {
     DEBUGLN("CAN1 initialize ok");
   } else {
-    DEBUGLN("CAN1 initialize fail!!");
+    DEBUGLN("CAN1 initialize fail");
     return false;
   }
 
@@ -331,73 +331,47 @@ bool CANBus::init(BITRATE bitrate, int remap) {
  * @param ch channel 1 or 2
  * @param CAN_rx_msg CAN message structure for reception
  */
-void CANBus::receive(uint8_t ch, CAN_msg_t* CAN_rx_msg) {
-  if(ch == 1) {
-    uint32_t id = CAN1->sFIFOMailBox[0].RIR;
-    if ((id & STM32_CAN_RIR_IDE) == 0) { // Standard frame format
-        CAN_rx_msg->format = STANDARD_FORMAT;;
-        CAN_rx_msg->id = (CAN_STD_ID_MASK & (id >> 21U));
-    } 
-    else {                               // Extended frame format
-        CAN_rx_msg->format = EXTENDED_FORMAT;;
-        CAN_rx_msg->id = (CAN_EXT_ID_MASK & (id >> 3U));
-    }
+void CANBus::receive(uint8_t ch, CAN_msg_t* CAN_rx_msg,uint8_t fifoIndex) {
+  CAN_FIFOMailBox_TypeDef *mailbox;
+  if(ch==1) {
+    mailbox = &CAN1->sFIFOMailBox[fifoIndex];
+  } else {
+    mailbox = &CAN2->sFIFOMailBox[fifoIndex];
+  }
 
-    if ((id & STM32_CAN_RIR_RTR) == 0) {  // Data frame
-        CAN_rx_msg->type = DATA_FRAME;
-    }
-    else {                                // Remote frame
-        CAN_rx_msg->type = REMOTE_FRAME;
-    }
+  uint32_t id = mailbox->RIR;
+  if ((id & STM32_CAN_RIR_IDE) == 0) {  // Standard frame format
+    CAN_rx_msg->format = STANDARD_FORMAT;
+    CAN_rx_msg->id = (CAN_STD_ID_MASK & (id >> 21U));
+  } else {  // Extended frame format
+    CAN_rx_msg->format = EXTENDED_FORMAT;
+    CAN_rx_msg->id = (CAN_EXT_ID_MASK & (id >> 3U));
+  }
 
-    
-    CAN_rx_msg->len = (CAN1->sFIFOMailBox[0].RDTR) & 0xFUL;
-    
-    CAN_rx_msg->data[0] = 0xFFUL &  CAN1->sFIFOMailBox[0].RDLR;
-    CAN_rx_msg->data[1] = 0xFFUL & (CAN1->sFIFOMailBox[0].RDLR >> 8);
-    CAN_rx_msg->data[2] = 0xFFUL & (CAN1->sFIFOMailBox[0].RDLR >> 16);
-    CAN_rx_msg->data[3] = 0xFFUL & (CAN1->sFIFOMailBox[0].RDLR >> 24);
-    CAN_rx_msg->data[4] = 0xFFUL &  CAN1->sFIFOMailBox[0].RDHR;
-    CAN_rx_msg->data[5] = 0xFFUL & (CAN1->sFIFOMailBox[0].RDHR >> 8);
-    CAN_rx_msg->data[6] = 0xFFUL & (CAN1->sFIFOMailBox[0].RDHR >> 16);
-    CAN_rx_msg->data[7] = 0xFFUL & (CAN1->sFIFOMailBox[0].RDHR >> 24);
-    
-    CAN1->RF0R |= 0x20UL;
-  } // end CAN1
-
-  if(ch == 2) {
-    uint32_t id = CAN2->sFIFOMailBox[0].RIR;
-    if ((id & STM32_CAN_RIR_IDE) == 0) { // Standard frame format
-        CAN_rx_msg->format = STANDARD_FORMAT;;
-        CAN_rx_msg->id = (CAN_STD_ID_MASK & (id >> 21U));
-    } 
-    else {                               // Extended frame format
-        CAN_rx_msg->format = EXTENDED_FORMAT;;
-        CAN_rx_msg->id = (CAN_EXT_ID_MASK & (id >> 3U));
+  CAN_rx_msg->type = ((id & STM32_CAN_RIR_RTR) == 0) ? DATA_FRAME : REMOTE_FRAME;    
+  CAN_rx_msg->len = (mailbox->RDTR) & 0xFUL;
+  CAN_rx_msg->data[0] = 0xFFUL &  mailbox->RDLR;
+  CAN_rx_msg->data[1] = 0xFFUL & (mailbox->RDLR >> 8);
+  CAN_rx_msg->data[2] = 0xFFUL & (mailbox->RDLR >> 16);
+  CAN_rx_msg->data[3] = 0xFFUL & (mailbox->RDLR >> 24);
+  CAN_rx_msg->data[4] = 0xFFUL &  mailbox->RDHR;
+  CAN_rx_msg->data[5] = 0xFFUL & (mailbox->RDHR >> 8);
+  CAN_rx_msg->data[6] = 0xFFUL & (mailbox->RDHR >> 16);
+  CAN_rx_msg->data[7] = 0xFFUL & (mailbox->RDHR >> 24);
+  
+  if(ch==1) {
+    if(fifoIndex==0) {
+      CAN1->RF0R |= CAN_RF0R_RFOM0_Msk;  // release mailbox 0
+    } else {
+      CAN1->RF1R |= CAN_RF1R_RFOM1_Msk;  // release mailbox 1
     }
-
-    if ((id & STM32_CAN_RIR_RTR) == 0) {  // Data frame
-        CAN_rx_msg->type = DATA_FRAME;
+  } else {
+    if(fifoIndex==0) {
+      CAN2->RF0R |= CAN_RF0R_RFOM0_Msk;  // release mailbox 0
+    } else {
+      CAN2->RF1R |= CAN_RF1R_RFOM1_Msk;  // release mailbox 1
     }
-    else {                                // Remote frame
-        CAN_rx_msg->type = REMOTE_FRAME;
-    }
-
-    
-    CAN_rx_msg->len = (CAN2->sFIFOMailBox[0].RDTR) & 0xFUL;
-    
-    CAN_rx_msg->data[0] = 0xFFUL &  CAN2->sFIFOMailBox[0].RDLR;
-    CAN_rx_msg->data[1] = 0xFFUL & (CAN2->sFIFOMailBox[0].RDLR >> 8);
-    CAN_rx_msg->data[2] = 0xFFUL & (CAN2->sFIFOMailBox[0].RDLR >> 16);
-    CAN_rx_msg->data[3] = 0xFFUL & (CAN2->sFIFOMailBox[0].RDLR >> 24);
-    CAN_rx_msg->data[4] = 0xFFUL &  CAN2->sFIFOMailBox[0].RDHR;
-    CAN_rx_msg->data[5] = 0xFFUL & (CAN2->sFIFOMailBox[0].RDHR >> 8);
-    CAN_rx_msg->data[6] = 0xFFUL & (CAN2->sFIFOMailBox[0].RDHR >> 16);
-    CAN_rx_msg->data[7] = 0xFFUL & (CAN2->sFIFOMailBox[0].RDHR >> 24);
-    
-    CAN2->RF0R |= 0x20UL;
-  } // END CAN2
-
+  }
 }
  
 /**
@@ -500,22 +474,27 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
 
  /**
  * Returns whether there are CAN messages available.
- *
  * @param ch channel 1 or 2
  * @returns If pending CAN messages are in the CAN controller
  */
-uint8_t CANBus::available(uint8_t channel) {
+uint8_t CANBus::available(uint8_t channel,uint8_t fifoIndex) {
   if (channel == 1) {
-    // Check for pending FIFO 0 messages
-    return CAN1->RF0R & 0x3UL;
-  } // end CAN1
-
-  if (channel == 2) {
-    // Check for pending FIFO 0 messages
-    return CAN2->RF0R & 0x3UL;
-  } // end CAN2
-
+    return (fifoIndex==0) ? (CAN1->RF0R & CAN_RF0R_FMP0_Msk) : (CAN1->RF1R & CAN_RF1R_FMP1_Msk);
+  } else if (channel == 2) {
+    return (fifoIndex==0) ? (CAN2->RF0R & CAN_RF0R_FMP0_Msk) : (CAN2->RF1R & CAN_RF1R_FMP1_Msk);
+  }
   return 0;
+}
+
+int8_t CANBus::getFirstWaitingFIFOIndex(uint8_t channel) {
+  if (channel == 1) {
+    if(CAN1->RF0R & CAN_RF0R_FMP0_Msk) return 0;
+    if(CAN1->RF1R & CAN_RF1R_FMP1_Msk) return 1;
+  } else if (channel == 2) {
+    if(CAN2->RF0R & CAN_RF0R_FMP0_Msk) return 0;
+    if(CAN2->RF1R & CAN_RF1R_FMP1_Msk) return 1;
+  }
+  return -1;
 }
 
 int8_t CANBus::getFirstOutgoingAvailableMailbox(uint8_t channel) {
@@ -553,7 +532,7 @@ int8_t CANBus::waitForOutgoingAvailableMailbox(uint8_t channel,long maxDelay) {
  * @param CAN_rx_msg - CAN message structure for reception
  */
 void CANBus::receive(CAN_msg_t* CAN_rx_msg) {
-  receive(CAN_ACTIVE_CHANNEL,CAN_rx_msg);
+  receive(CAN_ACTIVE_CHANNEL,CAN_rx_msg,getFirstWaitingFIFOIndex(CAN_ACTIVE_CHANNEL));
 }
  
 /**
@@ -564,8 +543,8 @@ void CANBus::receive(CAN_msg_t* CAN_rx_msg) {
  */
 bool CANBus::send(CAN_msg_t* CAN_tx_msg) {
   int box = waitForOutgoingAvailableMailbox(CAN_ACTIVE_CHANNEL,DEFAULT_MAILBOX_DELAY);
-  Serial.print("box=");
-  Serial.println(box);
+  //Serial.print("box=");
+  //Serial.println(box);
   return send(CAN_ACTIVE_CHANNEL,CAN_tx_msg);
 }
 
@@ -575,7 +554,8 @@ bool CANBus::send(CAN_msg_t* CAN_tx_msg) {
  * @returns If pending CAN messages are in the CAN controller
  */
 uint8_t CANBus::available() {
-  return available(CAN_ACTIVE_CHANNEL);
+  return available(CAN_ACTIVE_CHANNEL,0)
+       | available(CAN_ACTIVE_CHANNEL,1);
 }
 
 void CANBus::setup() {

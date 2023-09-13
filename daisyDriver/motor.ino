@@ -221,6 +221,10 @@ void MOTORsetTargetPosition(float angleUnit) {
   MOTORinterruptEnable();
 }
 
+float MOTORgetTargetPosition() {
+  return targetSteps / STEPS_PER_ROTATION;
+}
+
 void MOTORsetTargetVelocity(float degPerS) {
   stepDelay = STEPPER_TIMER_RATE / (degPerS * STEPS_PER_DEGREE);
 }

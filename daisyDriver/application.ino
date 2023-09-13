@@ -13,6 +13,14 @@ Application application;
 
 void Application::setup() {
   MOTORsetTargetVelocity(velocityDegPerS);
+  if(iAmMaster()) {
+    delay(1500);
+    requestAllNodeIDs();
+  }
+}
+
+bool Application::iAmMaster() {
+  return CANbus.myAddress==0;
 }
 
 void Application::toggleCANState() {
@@ -24,17 +32,15 @@ void Application::toggleCANState() {
  */
 void Application::readCAN() {
   if(!CANbus.available()) return;
-
+  
   CANParser inbound;
   CANbus.receive(&inbound.canMsg);
   //inbound.print();
 
-  uint16_t functionCode = inbound.getFunctionCode();
-
-  if(functionCode == COB_SDO_RECEIVE) {
-    parseReceive(inbound);
-  } else if( functionCode == COB_SDO_SEND) {
-    parseSend(inbound);
+  switch(inbound.getFunctionCode()) {
+    case COB_SDO_RECEIVE:  parseReceive(inbound);  break;
+    case COB_SDO_SEND:  parseSend(inbound);  break;
+    default:  break;
   }
 }
 
@@ -42,14 +48,14 @@ void Application::readCAN() {
 void Application::parseReceive(CANParser &inbound) {
   if(CANbus.myAddress!=0) return;  // only root can receive.
 
-  int index = inbound.getAddress();  // for/from who?
+  int index = inbound.getAddress();  // from who?
   if(index<0 || index>=NUM_AXIES) return;  // invalid address?!
 
   uint16_t id = inbound.getLong();
   if(id == CAN_READ) {
     toggleCANState();
     int subIndex = inbound.getShort();
-    if(subIndex == CAN_POSITION) {
+    if(subIndex == CAN_SENSOR) {
       lastHeard[index] = inbound.getFloat() * 360.0;
       //Serial.print("receive one position ");
       //Serial.print(index);
@@ -76,13 +82,17 @@ void Application::parseSend(CANParser &inbound) {
   if(id == CAN_READ) {
     switch(subIndex) {
       case CAN_ID: sendID();  break;
-      case CAN_POSITION: sendSensor();  break;
+      case CAN_POSITION: replyOneFloat(CAN_POSITION,MOTORgetTargetPosition());  break;
+      case CAN_VELOCITY: replyOneFloat(CAN_VELOCITY,velocityDegPerS);  break;
+      case CAN_SENSOR: replyOneFloat(CAN_SENSOR,sensorAngleUnit);  break;
       default:  break;
     }
   } else if(id == CAN_SET) {
     switch(subIndex) {
+      case CAN_ID:  break;  // do nothing.
       case CAN_POSITION:  setTargetPosition(inbound.getFloat());  break;
       case CAN_VELOCITY:  setTargetVelocity(inbound.getFloat());  break;
+      case CAN_SENSOR:  break;  // do nothing.
       default:  break;
     }
   }
@@ -116,22 +126,25 @@ void Application::sendID() {
 }
 
 /**
- * Send sensor reading of this node as a value from [0....1).
+ * Send one float response
+ * @param subIndex the subindex code
+ * @param value the float
  */
-void Application::sendSensor() {
+void Application::replyOneFloat(uint8_t subIndex,float value) {
   CANParser msg;
   msg.start(COB_SDO_RECEIVE,CANbus.myAddress);
   msg.addLong(CAN_READ);
-  msg.addShort(CAN_POSITION);
-  msg.addFloat(sensorAngleUnit);
+  msg.addShort(subIndex);
+  msg.addFloat(value);
   msg.send();
 }
+
 
 /**
  * request sensor angle from node with id=index
  * @param index the id of the node being asked.
  */
-void Application::requestOnePosition(uint8_t index) {
+void Application::requestOneSensor(uint8_t index) {
   if(index==0 && CANbus.myAddress==0) {
     //Serial.println("requestOnePosition myself");
     lastHeard[index] = sensorAngleUnit * 360.0;
@@ -141,26 +154,26 @@ void Application::requestOnePosition(uint8_t index) {
     CANParser msg;
     msg.start(COB_SDO_SEND,index);
     msg.addLong(CAN_READ);
-    msg.addShort(CAN_POSITION);
+    msg.addShort(CAN_SENSOR);
     msg.send();
   }
 }
 
-void Application::requestAllPositionsAtOnce() {
+void Application::requestAllSensorsAtOnce() {
   lastHeard[0] = sensorAngleUnit * 360.0;
-  requestOnePosition(ADDRESS_EVERYONE);
+  requestOneSensor(ADDRESS_EVERYONE);
 }
 
-void Application::requestAllPositionsIndividually() {
+void Application::requestAllSensorsIndividually() {
   float v;
   for(int i=0;i<NUM_AXIES;++i) {
-    requestOnePosition(i);
+    requestOneSensor(i);
   }
 }
 
-void Application::requestAllPositions() {
-  requestAllPositionsIndividually();
-  //requestAllPositionsAtOnce();
+void Application::requestAllSensors() {
+  requestAllSensorsIndividually();
+  //requestAllSensorsAtOnce();
 }
 
 /**
@@ -178,7 +191,7 @@ void Application::sendOnePosition(int index,float v) {
     //Serial.print(' ');
     //Serial.println(v);
     CANParser msg;
-    msg.start(COB_SDO_RECEIVE,index);
+    msg.start(COB_SDO_SEND,index);
     msg.addLong(CAN_SET);
     msg.addShort(CAN_POSITION);
     msg.addFloat(v);
@@ -212,11 +225,10 @@ void Application::sendOneVelocity(int index,float v) {
 
 
 void Application::rapidMove() {
-  Serial.println("rapidMove");
   // velocity
   int pos = seen('F');
   if(pos>=0) {
-    setVelocity(atof(serialBufferIn+pos));
+    setAllVelocity(atof(serialBufferIn+pos));
     // if this delay is too small the other unit doesn't receive the positions that follow.
     // 250 is too small.  500 works.  375 works.
     delay(375);
@@ -277,7 +289,7 @@ void Application::serverUpdate() {
   uint32_t t = millis();
   if(t - lastReq > POSITION_UPDATE_INTERVAL) {
     lastReq=t;
-    requestAllPositions();
+    requestAllSensors();
   }
 }
 
@@ -287,7 +299,7 @@ void Application::update() {
   serverUpdate();
 }
 
-void Application::setVelocity(float newVel) {
+void Application::setAllVelocity(float newVel) {
   for(int i=0;i<NUM_AXIES;++i) {
     sendOneVelocity(i,newVel);
   }

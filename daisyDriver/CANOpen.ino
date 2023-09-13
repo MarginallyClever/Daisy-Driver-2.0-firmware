@@ -32,9 +32,10 @@ bool CANOpen::send(CANOpen_msg_t *msg) {
 }
 
 void CANOpen::receive() {
+    if(!CANbus.available()) return;
+    
     CANOpen_msg_t _canOpenMsg;
-
-    CANbus.receive(&_canMsg);
+    CANbus.receive(&_canMsg);    
     _convertCANToCANOpen(&_canMsg, &_canOpenMsg);
     if (_canOpenMsg.COB_ID == 0x0000) {
       handleNMTMessage(&_canOpenMsg);

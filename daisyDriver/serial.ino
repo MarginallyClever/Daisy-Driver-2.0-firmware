@@ -57,8 +57,6 @@ void SERIALparse() {
     int gcode = atoi(serialBufferIn+codePos);
     switch(gcode) {
       case 0:
-        application.rapidMove();
-        break;
       case 1:
         application.rapidMove();
         break;

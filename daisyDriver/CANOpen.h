@@ -6,14 +6,16 @@
 #define HEARTBEAT_PRODUCER_BASE_COB_ID  0x700
 #define HEARTBEAT_CONSUMER_BASE_COB_ID  0x700
 
-#define CAN_SET                   0x2012
+#define CAN_SET  0x2012
 #define CAN_READ 0x2013
 
 #define CAN_ID            1
 #define CAN_CURRENT       2
 #define CAN_BRAKE_CURRENT 3
-#define CAN_VELOCITY      4
-#define CAN_POSITION      5
+#define CAN_POSITION      4
+#define CAN_VELOCITY      5
+#define CAN_ACCELERATION  6
+#define CAN_SENSOR        7
 
 #define ADDRESS_MASK 0x7F  // 0b00001111111
 
