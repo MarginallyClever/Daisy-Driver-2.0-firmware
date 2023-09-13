@@ -25,10 +25,10 @@ void setup() {
     CANbus.setup();
     //CANOpen::setup();
   #endif
-  LEDsetup();
+  light.setup();
   SENSORsetup();
   MOTORsetup();
-  APPsetup();
+  application.setup();
 }
 
 
@@ -43,10 +43,10 @@ void loop() {
   #endif
   SENSORread();
 
-  //CANopen::updateHeartbeat();
-  APPupdate();
+  CANopen.updateHeartbeat();
+  application.update();
 
-  LEDsetColor(
+  light.setColor(
     cos(sensorAngleUnit*PI)*255.0f/PI,
     MOTORstate, // sin(sensorAngleUnit*PI)*255.0f/PI,
     CANstate

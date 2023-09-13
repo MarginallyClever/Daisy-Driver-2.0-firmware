@@ -57,10 +57,10 @@ void SERIALparse() {
     int gcode = atoi(serialBufferIn+codePos);
     switch(gcode) {
       case 0:
-        APPrapidMove();
+        application.rapidMove();
         break;
       case 1:
-        APPrapidMove();
+        application.rapidMove();
         break;
       default:
         break;
@@ -73,7 +73,7 @@ void SERIALparse() {
     int mcode = atoi(serialBufferIn+codePos);
     switch(mcode) {
       case 114:
-        APPreportAllMotorPositions();
+        application.reportAllMotorPositions();
         break;
       default:
         break;

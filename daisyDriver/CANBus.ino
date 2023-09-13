@@ -113,7 +113,7 @@ void CANBus::readAddress() {
   pinMode(PIN_CAN_ADDR4,INPUT_PULLUP);
   pinMode(PIN_CAN_ADDR5,INPUT_PULLUP);
 
-  this->CANBusAddress = 
+  this->myAddress = 
       ((uint8_t)digitalRead(PIN_CAN_ADDR0) << 0)
     | ((uint8_t)digitalRead(PIN_CAN_ADDR1) << 1)
     | ((uint8_t)digitalRead(PIN_CAN_ADDR2) << 2)
@@ -319,6 +319,7 @@ bool CANBus::init(BITRATE bitrate, int remap) {
     DEBUGLN("CAN1 initialize fail!!");
     return false;
   }
+
   return true;
 }
  
@@ -422,27 +423,32 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
       out |= STM32_CAN_TIR_RTR;
   }
 
+  int mailbox = getFirstOutgoingAvailableMailbox(ch);
+
   if (ch == 1) {
-    CAN1->sTxMailBox[0].TDTR &= ~(0xF);
-    CAN1->sTxMailBox[0].TDTR |= CAN_tx_msg->len & 0xFUL;
+    CAN1->sTxMailBox[mailbox].TDTR &= ~(0xF);
+    CAN1->sTxMailBox[mailbox].TDTR |= CAN_tx_msg->len & 0xFUL;
     
-    CAN1->sTxMailBox[0].TDLR  = (((uint32_t) CAN_tx_msg->data[3] << 24) |
-                                 ((uint32_t) CAN_tx_msg->data[2] << 16) |
-                                 ((uint32_t) CAN_tx_msg->data[1] <<  8) |
-                                 ((uint32_t) CAN_tx_msg->data[0]      ));
-    CAN1->sTxMailBox[0].TDHR  = (((uint32_t) CAN_tx_msg->data[7] << 24) |
-                                 ((uint32_t) CAN_tx_msg->data[6] << 16) |
-                                 ((uint32_t) CAN_tx_msg->data[5] <<  8) |
-                                 ((uint32_t) CAN_tx_msg->data[4]      ));
+    CAN1->sTxMailBox[mailbox].TDLR  = (((uint32_t) CAN_tx_msg->data[3] << 24) |
+                                       ((uint32_t) CAN_tx_msg->data[2] << 16) |
+                                       ((uint32_t) CAN_tx_msg->data[1] <<  8) |
+                                       ((uint32_t) CAN_tx_msg->data[0]      ));
+    CAN1->sTxMailBox[mailbox].TDHR  = (((uint32_t) CAN_tx_msg->data[7] << 24) |
+                                       ((uint32_t) CAN_tx_msg->data[6] << 16) |
+                                       ((uint32_t) CAN_tx_msg->data[5] <<  8) |
+                                       ((uint32_t) CAN_tx_msg->data[4]      ));
 
     // Send Go
-    CAN1->sTxMailBox[0].TIR = out | STM32_CAN_TIR_TXRQ;
-/*
-    // Wait until the mailbox is empty
-    while(CAN1->sTxMailBox[0].TIR & 0x1UL && count++ < CAN_SEND_DELAY);
+    CAN1->sTxMailBox[mailbox].TIR = out | STM32_CAN_TIR_TXRQ;
 
-    // The mailbox don't becomes empty while loop
-    if (CAN1->sTxMailBox[0].TIR & 0x1UL) {
+#ifdef CAN_CHECK_SEND_OK
+    // Wait until the mailbox is empty
+    while((CAN1->sTxMailBox[mailbox].TIR & 0x1UL) 
+          && count++ < CAN_SEND_DELAY 
+          && getFirstOutgoingAvailableMailbox()==-1);
+
+    // The mailbox doesn't become empty while loop
+    if (CAN1->sTxMailBox[mailbox].TIR & 0x1UL) {
       #ifdef CAN_REPORT_FAIL
       DEBUGLN("Send Fail");
       DEBUGLN(CAN1->ESR);
@@ -450,31 +456,33 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
       DEBUGLN(CAN1->TSR);
       #endif
       return false;
-    }*/
-    return true;
-  } // end CAN1
-
-  if (ch == 2) {
-    CAN2->sTxMailBox[0].TDTR &= ~(0xF);
-    CAN2->sTxMailBox[0].TDTR |= CAN_tx_msg->len & 0xFUL;
+    }
+#endif
     
-    CAN2->sTxMailBox[0].TDLR  = (((uint32_t) CAN_tx_msg->data[3] << 24) |
-                                 ((uint32_t) CAN_tx_msg->data[2] << 16) |
-                                 ((uint32_t) CAN_tx_msg->data[1] <<  8) |
-                                 ((uint32_t) CAN_tx_msg->data[0]      ));
-    CAN2->sTxMailBox[0].TDHR  = (((uint32_t) CAN_tx_msg->data[7] << 24) |
-                                 ((uint32_t) CAN_tx_msg->data[6] << 16) |
-                                 ((uint32_t) CAN_tx_msg->data[5] <<  8) |
-                                 ((uint32_t) CAN_tx_msg->data[4]      ));
+    return true;
+  } else if (ch == 2) {
+    CAN2->sTxMailBox[mailbox].TDTR &= ~(0xF);
+    CAN2->sTxMailBox[mailbox].TDTR |= CAN_tx_msg->len & 0xFUL;
+    
+    CAN2->sTxMailBox[mailbox].TDLR  = (((uint32_t) CAN_tx_msg->data[3] << 24) |
+                                       ((uint32_t) CAN_tx_msg->data[2] << 16) |
+                                       ((uint32_t) CAN_tx_msg->data[1] <<  8) |
+                                       ((uint32_t) CAN_tx_msg->data[0]      ));
+    CAN2->sTxMailBox[mailbox].TDHR  = (((uint32_t) CAN_tx_msg->data[7] << 24) |
+                                       ((uint32_t) CAN_tx_msg->data[6] << 16) |
+                                       ((uint32_t) CAN_tx_msg->data[5] <<  8) |
+                                       ((uint32_t) CAN_tx_msg->data[4]      ));
 
     // Send Go
-    CAN2->sTxMailBox[0].TIR = out | STM32_CAN_TIR_TXRQ;
+    CAN2->sTxMailBox[mailbox].TIR = out | STM32_CAN_TIR_TXRQ;
 
     // Wait until the mailbox is empty
-    while(CAN2->sTxMailBox[0].TIR & 0x1UL && count++ < CAN_SEND_DELAY);
+    while((CAN2->sTxMailBox[mailbox].TIR & 0x1UL) 
+          && count++ < CAN_SEND_DELAY 
+          && getFirstOutgoingAvailableMailbox()==-1);
 
     // The mailbox don't becomes empty while loop
-    if (CAN2->sTxMailBox[0].TIR & 0x1UL) {
+    if (CAN2->sTxMailBox[mailbox].TIR & 0x1UL) {
       #ifdef CAN_REPORT_FAIL
       DEBUGLN("Send Fail");
       DEBUGLN(CAN2->ESR);
@@ -496,13 +504,13 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
  * @param ch channel 1 or 2
  * @returns If pending CAN messages are in the CAN controller
  */
-uint8_t CANBus::available(uint8_t ch) {
-  if (ch == 1) {
+uint8_t CANBus::available(uint8_t channel) {
+  if (channel == 1) {
     // Check for pending FIFO 0 messages
     return CAN1->RF0R & 0x3UL;
   } // end CAN1
 
-  if (ch == 2) {
+  if (channel == 2) {
     // Check for pending FIFO 0 messages
     return CAN2->RF0R & 0x3UL;
   } // end CAN2
@@ -510,6 +518,32 @@ uint8_t CANBus::available(uint8_t ch) {
   return 0;
 }
 
+int8_t CANBus::getFirstOutgoingAvailableMailbox(uint8_t channel) {
+  int8_t result = 0;
+
+  if (channel == 1) {
+    // Check CAN1 Transmit Status Register (TSR)
+    if (CAN1->TSR & CAN_TSR_TME0) return 0;  // Mailbox 1 is available
+    if (CAN1->TSR & CAN_TSR_TME1) return 1;  // Mailbox 2 is available
+    if (CAN1->TSR & CAN_TSR_TME2) return 2;  // Mailbox 3 is available
+  } else if(channel == 2) {
+    // Check CAN2 Transmit Status Register (TSR)
+    if (CAN2->TSR & CAN_TSR_TME0) return 0;  // Mailbox 1 is available
+    if (CAN2->TSR & CAN_TSR_TME1) return 1;  // Mailbox 2 is available
+    if (CAN2->TSR & CAN_TSR_TME2) return 2;  // Mailbox 3 is available
+  }
+
+  return -1;
+}
+
+int8_t CANBus::waitForOutgoingAvailableMailbox(uint8_t channel,long maxDelay) {
+  maxDelay += millis();
+  while(millis() < maxDelay) {
+    int i = getFirstOutgoingAvailableMailbox(channel);
+    if(i != -1) return i;
+  }
+  return -1;
+}
 
 /**
  * Decodes CAN messages from the data registers and populates a 
@@ -529,6 +563,9 @@ void CANBus::receive(CAN_msg_t* CAN_rx_msg) {
  * @param CAN_tx_msg - CAN message structure for transmission
  */
 bool CANBus::send(CAN_msg_t* CAN_tx_msg) {
+  int box = waitForOutgoingAvailableMailbox(CAN_ACTIVE_CHANNEL,DEFAULT_MAILBOX_DELAY);
+  Serial.print("box=");
+  Serial.println(box);
   return send(CAN_ACTIVE_CHANNEL,CAN_tx_msg);
 }
 
@@ -559,14 +596,14 @@ void CANBus::setup() {
   }
 
   DEBUG("CAN address=");
-  DEBUGLN(CANbus.CANBusAddress);
+  DEBUGLN(CANbus.myAddress);
 }
 
 
 void CANBus::stepTest() {
   this->writeTest();
   this->readTest();
-  LEDsetColor(canR,canG,canB);
+  light.setColor(canR,canG,canB);
 }
 
 
@@ -593,7 +630,7 @@ void CANBus::writeTest() {
     canB=(countS==1)?255:0;
 
     CAN_msg_t CAN_TX_msg;
-    CAN_TX_msg.id = (0x1<<7) + this->CANBusAddress;
+    CAN_TX_msg.id = (0x1<<7) + this->myAddress;
     CAN_TX_msg.format = STANDARD_FORMAT;
     CAN_TX_msg.type = DATA_FRAME;
     CAN_TX_msg.len = 8;
@@ -611,7 +648,6 @@ void CANBus::writeTest() {
     DEBUGLN("");
 #endif
 
-    
     canR = this->send(&CAN_TX_msg) ? 0 : 255;
   }
 }

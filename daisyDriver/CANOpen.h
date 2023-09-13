@@ -14,8 +14,17 @@
 #define CAN_SET_VELOCITY      3
 #define CAN_SET_POSITION      4
 
-
 #define CAN_CUSTOM_PARAMETER_READ_POSITION 5
+
+#define ADDRESS_MASK 0x7F  // 0b00001111111
+
+#define COB_NMT_CONTROL 0x000
+#define COB_SDO_SEND    0x580
+#define COB_SDO_RECEIVE 0x600
+
+#define MAKE_COB_ID(functionCode,address) (functionCode | address)
+#define COB_GET_FUNCTION_CODE(cobID)      (cobID&0x780)  // 0b11110000000
+#define COB_GET_ADDRESS(cobID)            (cobID&0x07F)  // 0b00001111111
 
 //-----------------------------------------------------------------------------
 

@@ -21,7 +21,7 @@ void CANOpen::begin() {
   operationalState = OperationalState::INITIALIZATION;
 
   lastHeartbeatTime = millis();
-  CANopen.sendHeartbeatMessage(CANbus.CANBusAddress, operationalState);
+  CANopen.sendHeartbeatMessage(CANbus.myAddress, operationalState);
 
   operationalState = OperationalState::PRE_OPERATIONAL;
 }
@@ -71,7 +71,7 @@ void CANOpen::sendNMTMessage(NMT_Command command, uint8_t nodeID) {
 void CANOpen::handleNMTMessage(CANOpen_msg_t *msg) {
     NMT_Command command = static_cast<NMT_Command>(msg->data[0]);
     uint8_t nodeID = msg->data[1];
-    if(nodeID != CANbus.CANBusAddress) return;
+    if(nodeID != CANbus.myAddress) return;
 
     // Take appropriate action based on the NMT command received
     switch (command) {
@@ -114,18 +114,20 @@ void CANOpen::sendHeartbeatMessage(uint8_t nodeID, uint8_t state) {
 }
 
 void CANOpen::handleHeartbeatMessage(CANOpen_msg_t *msg) {
-    uint8_t nodeID = msg->COB_ID & 0x7F;
+    uint8_t nodeID = COB_GET_ADDRESS(msg->COB_ID);
     uint8_t state = msg->data[0];
 
     // Take appropriate action based on the received Heartbeat message
     // For example, you could update the node's state in a data structure or trigger an event
+    Serial.print("node=");  Serial.print(nodeID);
+    Serial.print(", state=");  Serial.println(state,DEC);
 }  
 
 void CANOpen::updateHeartbeat() {
   uint32_t currentTime = millis();
   // Check if it's time to send a Heartbeat message
   if (currentTime - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS) {
-      this->sendHeartbeatMessage(CANbus.CANBusAddress, operationalState);
+      sendHeartbeatMessage(CANbus.myAddress, operationalState);
       lastHeartbeatTime = currentTime;
   }
 }
