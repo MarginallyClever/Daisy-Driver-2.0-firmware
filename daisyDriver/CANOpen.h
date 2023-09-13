@@ -7,14 +7,14 @@
 #define HEARTBEAT_CONSUMER_BASE_COB_ID  0x700
 
 #define CAN_SET                   0x2012
-#define CAN_CUSTOM_PARAMETER_READ 0x2013
+#define CAN_READ 0x2013
 
 #define CAN_SET_CURRENT       1
 #define CAN_SET_BRAKE_CURRENT 2
 #define CAN_SET_VELOCITY      3
 #define CAN_SET_POSITION      4
 
-#define CAN_CUSTOM_PARAMETER_READ_POSITION 5
+#define CAN_READ_POSITION 5
 
 #define ADDRESS_MASK 0x7F  // 0b00001111111
 
@@ -28,10 +28,6 @@
 // Attached should be the requested data or acknowledgement of the data that was written.
 #define COB_SDO_RECEIVE 0x600
 
-#define MAKE_COB_ID(functionCode,address) (functionCode | address)
-#define COB_GET_FUNCTION_CODE(cobID)      (cobID&0x780)  // 0b11110000000
-#define COB_GET_ADDRESS(cobID)            (cobID&0x07F)  // 0b00001111111
-
 //-----------------------------------------------------------------------------
 
 struct CANOpen_msg_t {
@@ -40,7 +36,6 @@ struct CANOpen_msg_t {
     uint8_t length;
     uint8_t data[8];
 };
-
 
 enum OperationalState {
   RESET_NODE,

@@ -5,6 +5,8 @@
 
 #define ADDRESS_EVERYONE 0x7F  // 0b00001111111
 
+#define POSITION_UPDATE_INTERVAL  100 // ms
+
 //-----------------------------------------------------------------------------
 
 uint8_t CANstate=0;

@@ -22,7 +22,8 @@ typedef enum { CAN_50KBPS,
                CAN_125KBPS,
                CAN_250KBPS,
                CAN_500KBPS,
-               CAN_1000KBPS } BITRATE;
+               CAN_1000KBPS
+} BITRATE;
 
 // Symbolic names for formats of CAN message
 typedef enum {
@@ -54,6 +55,12 @@ typedef enum {
 
 //-----------------------------------------------------------------------------
 
+#define MAKE_COB_ID(functionCode,address) (functionCode | address)
+#define COB_GET_FUNCTION_CODE(cobID)      (cobID&0x780)  // 0b11110000000
+#define COB_GET_ADDRESS(cobID)            (cobID&0x07F)  // 0b00001111111
+
+//-----------------------------------------------------------------------------
+
 typedef struct {
   uint32_t id;     /* 29 bit identifier                               */
   uint8_t data[8]; /* Data field                                      */
@@ -70,42 +77,62 @@ typedef const struct {
 } CAN_bit_timing_config_t;
 
 //-----------------------------------------------------------------------------
-// macros for working with CAN_msg_t
 
-#define CAN_START(canMsg) \
-  { \
-    canMsg.format = STANDARD_FORMAT; \
-    canMsg.type = DATA_FRAME; \
-    canMsg.len = 0; \
+class CANParser {
+public:
+  CAN_msg_t canMsg;
+  int index=0;
+
+  void start(uint16_t a,uint16_t b) {
+    canMsg.format = STANDARD_FORMAT;
+    canMsg.type = DATA_FRAME;
+    canMsg.len = 0;
+    canMsg.id = MAKE_COB_ID(a,b);
   }
 
-#define CAN_ADD_SHORT(canMsg, v) \
-  { canMsg.data[canMsg.len++] = ((v)&0xFF); }
-
-#define CAN_GET_SHORT(canMsg, v) (canMsg.data[v++])
-
-#define CAN_ADD_LONG(canMsg, v) \
-  { \
-    CAN_ADD_SHORT(canMsg, ((v >> 8) & 0xFF)); \
-    CAN_ADD_SHORT(canMsg, ((v)&0xFF)); \
+  inline void addShort(uint8_t v) {
+    canMsg.data[canMsg.len++] = ((v)&0xFF);
   }
 
-#define CAN_GET_LONG(canMsg, v) ((uint16_t)CAN_GET_SHORT(canMsg, v) << 8) | ((uint16_t)CAN_GET_SHORT(canMsg, v))
-
-#define CAN_ADD_FLOAT(canMsg, v) \
-  { \
-    uint8_t* samesies = (uint8_t*)&(v); \
-    CAN_ADD_SHORT(canMsg, (samesies[3])); \
-    CAN_ADD_SHORT(canMsg, (samesies[2])); \
-    CAN_ADD_SHORT(canMsg, (samesies[1])); \
-    CAN_ADD_SHORT(canMsg, (samesies[0])); \
+  inline uint8_t getShort() {
+    return canMsg.data[index++];
   }
 
-inline float CAN_GET_FLOAT(CAN_msg_t& canMsg, uint8_t& v) {
-  uint32_t i = (((uint32_t)CAN_GET_SHORT(canMsg, v) << 24) | ((uint32_t)CAN_GET_SHORT(canMsg, v) << 16) | ((uint32_t)CAN_GET_SHORT(canMsg, v) << 8) | ((uint32_t)CAN_GET_SHORT(canMsg, v)));
-  float r = *(float*)&i;
-  return r;
-}
+  inline void addLong(long v) {
+    addShort((v >> 8) & 0xFF);
+    addShort((v     ) & 0xFF);
+  }
+
+  inline uint16_t getLong() {
+    return ((uint16_t)getShort() << 8) | ((uint16_t)getShort());
+  }
+
+  inline void addFloat(float v) {
+    uint8_t* samesies = (uint8_t*)&(v);
+    addShort(samesies[3]);
+    addShort(samesies[2]);
+    addShort(samesies[1]);
+    addShort(samesies[0]);
+  }
+
+  inline float getFloat() {
+    uint32_t i = ((uint32_t)getShort() << 24) 
+               | ((uint32_t)getShort() << 16) 
+               | ((uint32_t)getShort() << 8) 
+               | ((uint32_t)getShort());
+    float r = *(float*)&i;
+    return r;
+  }
+
+  void print() {
+    Serial.print("id="    );  Serial.println(canMsg.id);
+    Serial.print("data="  );  Serial.println(canMsg.data[8]);
+    Serial.print("len="   );  Serial.println(canMsg.len);
+    //Serial.print("ch="    );  Serial.println(canMsg.ch);
+    Serial.print("format=");  Serial.println(canMsg.format);
+    Serial.print("type="  );  Serial.println(canMsg.type);
+  }
+};
 
 //-----------------------------------------------------------------------------
 class CANBus {
