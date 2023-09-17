@@ -423,12 +423,12 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
 
     // The mailbox doesn't become empty while loop
     if (CAN1->sTxMailBox[mailbox].TIR & 0x1UL) {
-      #ifdef CAN_REPORT_FAIL
+#ifdef CAN_REPORT_FAIL
       DEBUGLN("Send Fail");
       DEBUGLN(CAN1->ESR);
       DEBUGLN(CAN1->MSR);
       DEBUGLN(CAN1->TSR);
-      #endif
+#endif
       return false;
     }
 #endif
@@ -450,6 +450,7 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
     // Send Go
     CAN2->sTxMailBox[mailbox].TIR = out | STM32_CAN_TIR_TXRQ;
 
+#ifdef CAN_CHECK_SEND_OK
     // Wait until the mailbox is empty
     while((CAN2->sTxMailBox[mailbox].TIR & 0x1UL) 
           && count++ < CAN_SEND_DELAY 
@@ -457,14 +458,16 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
 
     // The mailbox don't becomes empty while loop
     if (CAN2->sTxMailBox[mailbox].TIR & 0x1UL) {
-      #ifdef CAN_REPORT_FAIL
+#ifdef CAN_REPORT_FAIL
       DEBUGLN("Send Fail");
       DEBUGLN(CAN2->ESR);
       DEBUGLN(CAN2->MSR);
       DEBUGLN(CAN2->TSR);
-      #endif
+#endif
       return false;
     }
+#endif
+
     return true;
   } // end CAN2
 

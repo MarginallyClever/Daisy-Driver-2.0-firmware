@@ -16,16 +16,44 @@ extern int32_t steps;
 
 extern uint32_t stepDelay;
 
-extern uint8_t MOTORstate;
+extern uint8_t state;
 
 //----------------------------
 
-extern void MOTORsetup();
-extern void MOTORstep();
-extern void MOTORsetCompare(uint32_t overflow);
+class Motor {
+public:
+  // the current  position, in steps.
+  int32_t steps = 0;
+  int32_t targetSteps = 0;
+  uint8_t stepDir = 0;
+  uint32_t stepsDiffAbs = 0;
+  uint32_t stepDelay = 1000000;
 
-extern void MOTORinterruptOff();
-extern void MOTORinterruptOn();
+  // 0...360
+  float targetPosition = 0;
 
-extern void MOTORsetTargetPosition(float angleUnit);
-extern void MOTORsetTargetVelocity(float degPerS);
+  uint8_t state;
+
+  void setup();
+  void step();
+  void setCompare(uint32_t overflow);
+
+  void interruptOff();
+  void interruptOn();
+
+  void setTargetPosition(float angleUnit);
+  void setTargetVelocity(float degPerS);
+
+  float getTargetPosition();
+
+  void enable();
+  void disable();
+  void stepInterrupt();
+
+private:
+  void interruptEnable();
+  void interruptDisable();
+};
+
+extern Motor motor;
+

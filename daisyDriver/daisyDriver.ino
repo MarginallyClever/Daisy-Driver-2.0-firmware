@@ -27,7 +27,7 @@ void setup() {
   #endif
   light.setup();
   SENSORsetup();
-  MOTORsetup();
+  motor.setup();
   application.setup();
 }
 
@@ -48,7 +48,7 @@ void loop() {
 
   light.setColor(
     cos(sensorAngleUnit*PI)*255.0f/PI,
-    MOTORstate, // sin(sensorAngleUnit*PI)*255.0f/PI,
+    motor.state, // sin(sensorAngleUnit*PI)*255.0f/PI,
     CANstate
     );
 }

@@ -12,7 +12,7 @@ Application application;
 //-----------------------------------------------------------------------------
 
 void Application::setup() {
-  MOTORsetTargetVelocity(velocityDegPerS);
+  motor.setTargetVelocity(velocityDegPerS);
   if(iAmMaster()) {
     delay(1500);
     requestAllNodeIDs();
@@ -82,7 +82,7 @@ void Application::parseSend(CANParser &inbound) {
   if(id == CAN_READ) {
     switch(subIndex) {
       case CAN_ID: sendID();  break;
-      case CAN_POSITION: replyOneFloat(CAN_POSITION,MOTORgetTargetPosition());  break;
+      case CAN_POSITION: replyOneFloat(CAN_POSITION,motor.getTargetPosition());  break;
       case CAN_VELOCITY: replyOneFloat(CAN_VELOCITY,velocityDegPerS);  break;
       case CAN_SENSOR: replyOneFloat(CAN_SENSOR,sensorAngleUnit);  break;
       default:  break;
@@ -102,7 +102,7 @@ void Application::setTargetPosition(float targetPosition) {
   toggleCANState();
   Serial.print("set position ");
   Serial.println(targetPosition*360.0f);
-  MOTORsetTargetPosition(targetPosition);
+  motor.setTargetPosition(targetPosition);
 }
 
 void Application::setTargetVelocity(float targetVelocity) {
@@ -110,7 +110,7 @@ void Application::setTargetVelocity(float targetVelocity) {
   Serial.print("set velocity ");
   Serial.println(targetVelocity);
   velocityDegPerS = targetVelocity;
-  MOTORsetTargetVelocity(targetVelocity);
+  motor.setTargetVelocity(targetVelocity);
 }
 
 /**
@@ -184,7 +184,7 @@ void Application::sendOnePosition(int index,float v) {
   if(index==0 && CANbus.myAddress==0) {
     //Serial.print("sendOnePosition myself ");
     //Serial.println(v);
-    MOTORsetTargetPosition(v);
+    motor.setTargetPosition(v);
   } else {
     //Serial.print("sendOnePosition ");
     //Serial.print(index);
@@ -208,7 +208,7 @@ void Application::sendOneVelocity(int index,float v) {
     //Serial.print("sendOnePosition myself ");
     //Serial.println(v);
     velocityDegPerS = v;
-    MOTORsetTargetVelocity(velocityDegPerS);
+    motor.setTargetVelocity(velocityDegPerS);
   } else {
     //Serial.print("sendOnePosition ");
     //Serial.print(index);
@@ -231,7 +231,9 @@ void Application::rapidMove() {
     setAllVelocity(atof(serialBufferIn+pos));
     // if this delay is too small the other unit doesn't receive the positions that follow.
     // 250 is too small.  500 works.  375 works.
-    delay(375);
+    //delay(375);
+    Serial.print('F');
+    Serial.print(velocityDegPerS);
   }
   
   // positions
@@ -248,16 +250,17 @@ void Application::rapidMove() {
       sendOnePosition(i,v);
     }
   }
-
-  Serial.print(' ');
-  Serial.print('F');
-  Serial.print(velocityDegPerS);
   Serial.println();
 }
 
 
 void Application::reportAllMotorPositions() {
   Serial.print("M114");
+
+  requestAllSensors();
+  long t = millis()+250;
+  while(millis()<t) readCAN();
+
   for(int i=0;i<NUM_AXIES;++i) {
     Serial.print(' ');
     Serial.print(axies[i]);
@@ -284,13 +287,13 @@ void Application::requestAllNodeIDs() {
 void Application::serverUpdate() {
   // only server at address 0
   if(CANbus.myAddress!=0) return;
-  
+  /*
   // sometimes ask for position updates.
   uint32_t t = millis();
   if(t - lastReq > POSITION_UPDATE_INTERVAL) {
     lastReq=t;
     requestAllSensors();
-  }
+  }*/
 }
 
 

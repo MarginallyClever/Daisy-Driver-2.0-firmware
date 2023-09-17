@@ -13,8 +13,6 @@ void SENSORsetup() {
   
   // read the current sensor value
   SENSORread();
-  steps = sensorAngleUnit * STEPS_PER_ROTATION;
-  targetPosition = sensorAngleUnit * 360.0;
 }
 
 

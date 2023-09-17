@@ -9,7 +9,7 @@
 #define CAN_ACTIVE_CHANNEL 1
 
 // enable this and the app will wait for the mailbox to empty before returning.
-#define CAN_CHECK_SEND_OK
+//#define CAN_CHECK_SEND_OK
 
 // how long should the firmware wait for an outgoing mailbox to be available?
 #define DEFAULT_MAILBOX_DELAY 10  //ms

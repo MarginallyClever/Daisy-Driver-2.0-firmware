@@ -9,7 +9,7 @@
 //-----------------------------------------------------------------------------
 
 #define R_SENSE 0.11f
-#define RMS_CURRENT 570 // 0.4a motors / 0.707 peak-to-peak current for TMC2130
+#define RMS_CURRENT 570 // 0.4a s / 0.707 peak-to-peak current for TMC2130
 
 #define STEP_TIMER_IRQ_PRIO 2
 
@@ -18,6 +18,8 @@
 #define HAL_TIMER_TYPE_MAX 0xFFFF  // maximum value for 16 bit timer.
 
 //-----------------------------------------------------------------------------
+
+Motor motor;
 
 HardwareTimer *timer = new HardwareTimer(TIM8);
 
@@ -29,29 +31,20 @@ TMC2130Stepper driver = TMC2130Stepper(PIN_SPI1_TMC_CS, R_SENSE);  // hardware S
 #endif
 
 
-// the current motor position, in steps.
-int32_t steps = 0;
-int32_t targetSteps = 0;
-uint8_t stepDir = 0;
-uint32_t stepsDiffAbs = 0;
-uint32_t stepDelay = 1000000;
-
-/**
- * 0...360
- */
-float targetPosition = 0;
-
-uint8_t MOTORstate;
-
 //-----------------------------------------------------------------------------
 
 /**
  * prepare the TMC2130 driver
  * See also https://revspace.nl/TMC2130
  */
-void MOTORsetup() {
-  DEBUGLN(F("MOTORsetup()"));
+void Motor::setup() {
+  DEBUGLN(F("setup()"));
 
+  // set the current steps to the sensor reading
+  steps = sensorAngleUnit * STEPS_PER_ROTATION;
+  motor.setTargetPosition(sensorAngleUnit);
+
+  // set pins
   pinMode(PIN_TMC_EN,OUTPUT);
   pinMode(PIN_TMC_DIR,OUTPUT);
   pinMode(PIN_TMC_STEP,OUTPUT);
@@ -60,7 +53,7 @@ void MOTORsetup() {
 
   driver.begin();
   driver.toff(5);           // enable StallGuard
-  driver.rms_current(RMS_CURRENT);  // Set motor RMS current
+  driver.rms_current(RMS_CURRENT);  // Set  RMS current
   driver.microsteps(0);    // Set microsteps (0,2,4,8,16)
 
   // Toggle stealthChop
@@ -68,7 +61,7 @@ void MOTORsetup() {
   driver.pwm_autoscale(true);
 
   // enable the driver
-  digitalWrite(PIN_TMC_EN,LOW);
+  enable();
 
   uint32_t clockFrequency = timer->getTimerClkFreq();
   uint32_t prescale = clockFrequency/(STEPPER_TIMER_RATE);
@@ -76,33 +69,33 @@ void MOTORsetup() {
   timer->setOverflow(clockFrequency / prescale, TICK_FORMAT);
   timer->setPreloadEnable(false);
 
-  MOTORinterruptEnable();
+  interruptEnable();
 
   // Start the timer.
   timer->resume();
   timer->setInterruptPriority(STEP_TIMER_IRQ_PRIO, 0);
 }
 
-void MOTORinterruptEnable() {
+void Motor::interruptEnable() {
   // Attach an interrupt on overflow (update) of the timer.
-  if(!timer->hasInterrupt()) timer->attachInterrupt(MOTORstepInterrupt);
+  if(!timer->hasInterrupt()) timer->attachInterrupt(_stepInterrupt);
 }
 
-void MOTORinterruptDisable() {
+void Motor::interruptDisable() {
   timer->detachInterrupt();
 }
 
 
-void MOTORinterruptOff() {
+void Motor::interruptOff() {
   __disable_irq();
 }
 
-void MOTORinterruptOn() {
+void Motor::interruptOn() {
   __enable_irq();
 }
 
 
-void MOTORsetCompare(const uint32_t overflow) {
+void Motor::setCompare(const uint32_t overflow) {
   timer->setOverflow(overflow+1,TICK_FORMAT);
   if(overflow < timer->getCount()) {
     timer->refresh();
@@ -110,7 +103,7 @@ void MOTORsetCompare(const uint32_t overflow) {
 }
 
 
-inline uint32_t MOTORgetCount() {
+inline uint32_t getCount() {
   return timer->getCount();
 }
 
@@ -125,9 +118,9 @@ void SPIsetup() {
 
 /*
 // slow way for debugging
-void MOTORstep() {
+void Motor::step() {
   double angleNow = steps / STEPS_PER_DEGREE;
-  // get the difference between sensor and assumed motor position
+  // get the difference between sensor and assumed  position
   double diff = targetPosition - angleNow;
   if(abs(diff)<1.0) return;
 
@@ -145,7 +138,7 @@ void MOTORstep() {
     DEBUGLN(dir);
   #endif
 
-  // move the motor
+  // move the 
   digitalWrite(PIN_TMC_STEP,HIGH);
   delayMicroseconds(stepDelay);
   digitalWrite(PIN_TMC_STEP,LOW);
@@ -158,24 +151,28 @@ void MOTORstep() {
 }
 */
 
-void MOTORstepInterrupt() {
+void _stepInterrupt() {
+  motor.stepInterrupt();
+}
+
+void Motor::stepInterrupt() {
   static uint32_t nextMainISR = 0;
 
-  MOTORinterruptOff();
-  MOTORsetCompare(HAL_TIMER_TYPE_MAX);
+  interruptOff();
+  setCompare(HAL_TIMER_TYPE_MAX);
 
   uint8_t maxLoops = 10;
   uint32_t minTicks;
   uint32_t nextTick=0;
   
   do {
-    MOTORinterruptOn();
+    interruptOn();
     // STEP PHASE
     if(!nextMainISR && stepsDiffAbs>0) {
       // blink light
-      MOTORstate = (!MOTORstate ? 255:0);
+      state = (!state ? 255:0);
 
-      // move the motor
+      // move the 
       digitalWrite(PIN_TMC_STEP,HIGH);
       digitalWrite(PIN_TMC_STEP,LOW);
       // keep count
@@ -192,24 +189,24 @@ void MOTORstepInterrupt() {
     nextMainISR -= interval;
     nextTick += interval;
 
-    MOTORinterruptOff();
-    minTicks = MOTORgetCount() + (uint32_t)STEPPER_TIMER_TICKS_PER_US;
+    interruptOff();
+    minTicks = getCount() + (uint32_t)STEPPER_TIMER_TICKS_PER_US;
     if (!--maxLoops) nextTick = minTicks;
   } while(nextTick < minTicks);
 
   if(stepsDiffAbs==0) {
-    MOTORinterruptDisable();
+    interruptDisable();
   } else {
-    MOTORsetCompare(nextTick);
+    setCompare(nextTick);
   }
-  MOTORinterruptOn();
+  interruptOn();
 }
 
 
 /**
  * @param angleUnit 0...1
  */
-void MOTORsetTargetPosition(float angleUnit) {
+void Motor::setTargetPosition(float angleUnit) {
   targetSteps = angleUnit * STEPS_PER_ROTATION;
   int32_t diff = targetSteps - steps;
   stepsDiffAbs = abs(diff);
@@ -218,13 +215,21 @@ void MOTORsetTargetPosition(float angleUnit) {
   stepDir = diff>0 ? 1 : -1;
   digitalWrite(PIN_TMC_DIR,(diff>0)?HIGH:LOW);
 
-  MOTORinterruptEnable();
+  interruptEnable();
 }
 
-float MOTORgetTargetPosition() {
+float Motor::getTargetPosition() {
   return targetSteps / STEPS_PER_ROTATION;
 }
 
-void MOTORsetTargetVelocity(float degPerS) {
+void Motor::setTargetVelocity(float degPerS) {
   stepDelay = STEPPER_TIMER_RATE / (degPerS * STEPS_PER_DEGREE);
+}
+
+void Motor::enable() {
+  digitalWrite(PIN_TMC_EN,LOW);
+}
+
+void Motor::disable() {
+  digitalWrite(PIN_TMC_EN,HIGH);
 }
