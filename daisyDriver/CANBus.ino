@@ -152,7 +152,7 @@ void CANBus::setFilter(uint8_t index, uint8_t scale, uint8_t mode, uint8_t fifo,
   } else {
     CAN1->FS1R |= (0x1UL<<index);              // Set filter to single 32 bit configuration
   }
-    if (mode == 0) {
+  if (mode == 0) {
     CAN1->FM1R &= ~(0x1UL<<index);             // Set filter to Mask mode
   } else {
     CAN1->FM1R |= (0x1UL<<index);              // Set filter to List mode
@@ -373,7 +373,30 @@ void CANBus::receive(uint8_t ch, CAN_msg_t* CAN_rx_msg,uint8_t fifoIndex) {
     }
   }
 }
- 
+
+bool CANBus::receiveOverflow(uint8_t ch,uint8_t fifoIndex) {
+  bool result=0;
+  if(ch==1) {
+    if(fifoIndex==0) {
+      result = (CAN1->RF0R & CAN_RF0R_FOVR0) != 0;  // mailbox 0
+      // clear flag
+      CAN1->RF0R |= ~CAN_RF0R_FOVR0;
+    } else {
+      result = (CAN1->RF1R & CAN_RF1R_FOVR1) != 0;  // mailbox 1
+      CAN1->RF1R |= ~CAN_RF0R_FOVR0;
+    }
+  } else {
+    if(fifoIndex==0) {
+      result = (CAN2->RF0R & CAN_RF0R_FOVR0) != 0;  // mailbox 0
+      CAN2->RF0R |= ~CAN_RF0R_FOVR0;
+    } else {
+      result = (CAN2->RF1R & CAN_RF1R_FOVR1) != 0;  // mailbox 1
+      CAN2->RF1R |= ~CAN_RF0R_FOVR0;
+    }
+  }
+  return result;
+}
+
 /**
  * Encodes CAN messages using the CAN message struct and populates the 
  * data registers with the sent.

@@ -217,6 +217,13 @@ public:
   void stepTest();
   void readTest();
   void writeTest();
+
+  /**
+   * return true if the fifo mailbox has overflowed.
+   * @param ch channel, either 1 or 2.
+   * @param fifoIndex the fifo mailbox, either 1 or 2.
+   */
+  bool receiveOverflow(uint8_t ch,uint8_t fifoIndex);
 };
 
 //-----------------------------------------------------------------------------
