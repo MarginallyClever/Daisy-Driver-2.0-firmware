@@ -28,7 +28,6 @@ CANBus CANbus;
 uint8_t counter = 0;
 uint8_t frameLength = 0;
 uint32_t previousMillis = 0;  // stores last time output was updated
-const long interval = 1000;  // transmission interval (milliseconds)
 
 uint8_t canR=0;
 uint8_t canG=0;
@@ -291,7 +290,7 @@ bool CANBus::init(BITRATE bitrate, int remap) {
     }
     delayMicroseconds(1000);
   }
-  //DEBUG("can2=");
+  //DEBUG("CAN2=");
   //DEBUGLN(can2);
   if (can2) {
     DEBUGLN("CAN2 initialize ok");
@@ -300,7 +299,7 @@ bool CANBus::init(BITRATE bitrate, int remap) {
   }
 
   bool can1 = false;
-  CAN1->MCR   &= ~(0x1UL);               // Require CAN1 to normal mode 
+  CAN1->MCR &= ~(0x1UL);  // Require CAN1 to normal mode 
 
   // Wait for normal mode
   // If the connection is not correct, it will not return to normal mode.
@@ -311,7 +310,7 @@ bool CANBus::init(BITRATE bitrate, int remap) {
     }
     delayMicroseconds(1000);
   }
-  //DEBUG("can1=");
+  //DEBUG("CAN1=");
   //DEBUGLN(can1);
   if (can1) {
     DEBUGLN("CAN1 initialize ok");
@@ -320,7 +319,28 @@ bool CANBus::init(BITRATE bitrate, int remap) {
     return false;
   }
 
+  // attach message pending interrupt method
+  NVIC_SetPriority(CAN1_TX_IRQn, 1);
+  NVIC_EnableIRQ(CAN1_TX_IRQn);
+  // Enable FIFO Message Pending Interrupt 
+  CAN1->IER |= CAN_IER_FMPIE0 | CAN_IER_FMPIE1;
+  DEBUGLN("CAN1 interrupt enabled.");
+
   return true;
+}
+
+void CAN1_RX0_IRQHandler(void) {
+  light.setColor(CANstate,CANstate,CANstate);
+  CANstate = (CANstate==0? 255 : 0);
+  CAN1->RF0R |= CAN_RF0R_RFOM0;  // release FIFO
+  CAN1->IER |= CAN_IER_FMPIE0;  // enable interrupt
+}
+
+void CAN1_RX1_IRQHandler(void) {
+  light.setColor(CANstate,CANstate,CANstate);
+  CANstate = (CANstate==0? 255 : 0);
+  CAN1->RF1R |= CAN_RF1R_RFOM1;  // release FIFO
+  CAN1->IER |= CAN_IER_FMPIE1;  // enable interrupt
 }
  
 /**
@@ -361,15 +381,15 @@ void CANBus::receive(uint8_t ch, CAN_msg_t* CAN_rx_msg,uint8_t fifoIndex) {
   
   if(ch==1) {
     if(fifoIndex==0) {
-      CAN1->RF0R |= CAN_RF0R_RFOM0_Msk;  // release mailbox 0
+      CAN1->RF0R |= CAN_RF0R_RFOM0;  // release mailbox 0
     } else {
-      CAN1->RF1R |= CAN_RF1R_RFOM1_Msk;  // release mailbox 1
+      CAN1->RF1R |= CAN_RF1R_RFOM1;  // release mailbox 1
     }
   } else {
     if(fifoIndex==0) {
-      CAN2->RF0R |= CAN_RF0R_RFOM0_Msk;  // release mailbox 0
+      CAN2->RF0R |= CAN_RF0R_RFOM0;  // release mailbox 0
     } else {
-      CAN2->RF1R |= CAN_RF1R_RFOM1_Msk;  // release mailbox 1
+      CAN2->RF1R |= CAN_RF1R_RFOM1;  // release mailbox 1
     }
   }
 }
@@ -505,20 +525,20 @@ bool CANBus::send(uint8_t ch, CAN_msg_t* CAN_tx_msg) {
  */
 uint8_t CANBus::available(uint8_t channel,uint8_t fifoIndex) {
   if (channel == 1) {
-    return (fifoIndex==0) ? (CAN1->RF0R & CAN_RF0R_FMP0_Msk) : (CAN1->RF1R & CAN_RF1R_FMP1_Msk);
+    return (fifoIndex==0) ? (CAN1->RF0R & CAN_RF0R_FMP0) : (CAN1->RF1R & CAN_RF1R_FMP1);
   } else if (channel == 2) {
-    return (fifoIndex==0) ? (CAN2->RF0R & CAN_RF0R_FMP0_Msk) : (CAN2->RF1R & CAN_RF1R_FMP1_Msk);
+    return (fifoIndex==0) ? (CAN2->RF0R & CAN_RF0R_FMP0) : (CAN2->RF1R & CAN_RF1R_FMP1);
   }
   return 0;
 }
 
 int8_t CANBus::getFirstWaitingFIFOIndex(uint8_t channel) {
   if (channel == 1) {
-    if(CAN1->RF0R & CAN_RF0R_FMP0_Msk) return 0;
-    if(CAN1->RF1R & CAN_RF1R_FMP1_Msk) return 1;
+    if(CAN1->RF0R & CAN_RF0R_FMP0) return 0;
+    if(CAN1->RF1R & CAN_RF1R_FMP1) return 1;
   } else if (channel == 2) {
-    if(CAN2->RF0R & CAN_RF0R_FMP0_Msk) return 0;
-    if(CAN2->RF1R & CAN_RF1R_FMP1_Msk) return 1;
+    if(CAN2->RF0R & CAN_RF0R_FMP0) return 0;
+    if(CAN2->RF1R & CAN_RF1R_FMP1) return 1;
   }
   return -1;
 }
@@ -585,7 +605,7 @@ uint8_t CANBus::available() {
 }
 
 void CANBus::setup() {
-  DEBUGLN(F("CANsetup()"));
+  DEBUGLN(F("CANBus::setup()"));
 
   pinMode(PIN_CAN_SILENT,OUTPUT);
   digitalWrite(PIN_CAN_SILENT,LOW);
@@ -594,14 +614,14 @@ void CANBus::setup() {
 
   bool ret = init(CAN_SPEED, 2);  // CAN_RX mapped to PB8, CAN_TX mapped to PB9
   if(ret) {
-    DEBUGLN(F("CANsetup OK"));
+    DEBUGLN(F("CANBus::setup OK"));
     canR=0;
   } else {
-    DEBUGLN(F("CANsetup FAILED"));
+    DEBUGLN(F("CANBus::setup FAILED"));
     canR=255;
   }
 
-  DEBUG("CAN address=");
+  DEBUG(F("CANBus::myAddress="));
   DEBUGLN(CANbus.myAddress);
 }
 
