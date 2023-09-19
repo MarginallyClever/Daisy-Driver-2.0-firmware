@@ -233,3 +233,7 @@ void Motor::enable() {
 void Motor::disable() {
   digitalWrite(PIN_TMC_EN,HIGH);
 }
+
+bool Motor::getMotorEnable() {
+  return digitalRead(PIN_TMC_EN);
+}

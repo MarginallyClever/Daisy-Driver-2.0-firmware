@@ -50,6 +50,8 @@ public:
   void disable();
   void stepInterrupt();
 
+  bool getMotorEnable();
+
 private:
   void interruptEnable();
   void interruptDisable();

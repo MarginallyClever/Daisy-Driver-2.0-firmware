@@ -24,7 +24,7 @@ bool Application::iAmMaster() {
 }
 
 void Application::toggleCANState() {
-  CANstate = (CANstate==0? 255 : 0);
+  //CANstate = (CANstate==0? 255 : 0);
 }
 
 /**
@@ -85,6 +85,7 @@ void Application::parseSend(CANParser &inbound) {
       case CAN_POSITION: replyOneFloat(CAN_POSITION,motor.getTargetPosition());  break;
       case CAN_VELOCITY: replyOneFloat(CAN_VELOCITY,velocityDegPerS);  break;
       case CAN_SENSOR: replyOneFloat(CAN_SENSOR,sensorAngleUnit);  break;
+      case CAN_ENABLE_MOTOR:  replyOneShort(CAN_ENABLE_MOTOR,motor.getMotorEnable());  break;
       default:  break;
     }
   } else if(id == CAN_SET) {
@@ -93,6 +94,7 @@ void Application::parseSend(CANParser &inbound) {
       case CAN_POSITION:  setTargetPosition(inbound.getFloat());  break;
       case CAN_VELOCITY:  setTargetVelocity(inbound.getFloat());  break;
       case CAN_SENSOR:  break;  // do nothing.
+      case CAN_ENABLE_MOTOR:  enableOneMotor(CANbus.myAddress,inbound.getShort());  break;
       default:  break;
     }
   }
@@ -126,7 +128,7 @@ void Application::sendID() {
 }
 
 /**
- * Send one float response
+ * Send one float value response
  * @param subIndex the subindex code
  * @param value the float
  */
@@ -139,6 +141,19 @@ void Application::replyOneFloat(uint8_t subIndex,float value) {
   msg.send();
 }
 
+/**
+ * Send one short value response
+ * @param subIndex the subindex code
+ * @param value the short
+ */
+void Application::replyOneShort(uint8_t subIndex,uint8_t value) {
+  CANParser msg;
+  msg.start(COB_SDO_RECEIVE,CANbus.myAddress);
+  msg.addLong(CAN_READ);
+  msg.addShort(subIndex);
+  msg.addShort(value);
+  msg.send();
+}
 
 /**
  * request sensor angle from node with id=index
@@ -287,13 +302,20 @@ void Application::requestAllNodeIDs() {
 void Application::serverUpdate() {
   // only server at address 0
   if(CANbus.myAddress!=0) return;
-  /*
+  
   // sometimes ask for position updates.
   uint32_t t = millis();
   if(t - lastReq > POSITION_UPDATE_INTERVAL) {
     lastReq=t;
     requestAllSensors();
-  }*/
+  }
+
+  if(CANbus.receiveOverflow(CAN_ACTIVE_CHANNEL,1)) {
+    Serial.println("overflow 1");
+  }
+  if(CANbus.receiveOverflow(CAN_ACTIVE_CHANNEL,2)) {
+    Serial.println("overflow 2");
+  }
 }
 
 
@@ -306,4 +328,30 @@ void Application::setAllVelocity(float newVel) {
   for(int i=0;i<NUM_AXIES;++i) {
     sendOneVelocity(i,newVel);
   }
+}
+
+void Application::enableOneMotor(uint8_t index,bool newState) {
+  if(index==CANbus.myAddress) {
+    if(newState) motor.enable();
+    else motor.disable();
+  } else {
+    CANParser msg;
+    msg.start(COB_SDO_SEND,index);
+    msg.addLong(CAN_SET);
+    msg.addShort(CAN_ENABLE_MOTOR);
+    msg.addShort(newState);
+    msg.send();
+  }
+}
+
+void Application::enableAllMotors(bool newState) {
+  if(newState) motor.enable();
+  else motor.disable();
+
+  CANParser msg;
+  msg.start(COB_SDO_SEND,ADDRESS_EVERYONE);
+  msg.addLong(CAN_SET);
+  msg.addShort(CAN_ENABLE_MOTOR);
+  msg.addShort(newState);
+  msg.send();
 }

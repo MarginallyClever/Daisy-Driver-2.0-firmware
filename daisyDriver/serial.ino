@@ -70,13 +70,31 @@ void SERIALparse() {
   if(codePos>=0) {
     int mcode = atoi(serialBufferIn+codePos);
     switch(mcode) {
-      case 114:
-        application.reportAllMotorPositions();
-        break;
+      case 17:  SERIALenableMotors(true);  break;
+      case 18:  SERIALenableMotors(false);  break;
+      case 114:  application.reportAllMotorPositions();  break;
       default:
         break;
     }
     return;
   }
+}
+
+
+/**
+  * look in the serial buffer for axis codes and enable/disable each.
+  * if none are found, enable/disable all.
+  * @params newState true to enable, false to disable.
+  */
+void SERIALenableMotors(bool newState) {
+  bool seenAny=false;
+  for(int i=0;i<NUM_AXIES;++i) {
+    if(seen(axies[i])) {
+      seenAny=true;
+      application.enableOneMotor(i,newState);
+    }
+  }
+
+  if(!seenAny) application.enableAllMotors(newState);
 }
 #endif

@@ -19,9 +19,10 @@
 
 
 #ifdef BUILD_CANBUS
-  //#define CAN_SPEED       CAN_1000KBPS
-  #define CAN_SPEED       CAN_500KBPS
+  //#define CAN_SPEED       CAN_50KBPS
   //#define CAN_SPEED       CAN_100KBPS
+  #define CAN_SPEED       CAN_500KBPS
+  //#define CAN_SPEED       CAN_1000KBPS
 #endif
 
 //-----------------------------------------------------------------------------
