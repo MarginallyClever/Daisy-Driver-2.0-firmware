@@ -319,26 +319,29 @@ bool CANBus::init(BITRATE bitrate, int remap) {
     return false;
   }
 
+#ifdef CAN_ENABLE_RX0_INTERRUPT
   // attach message pending interrupt method
-  NVIC_SetPriority(CAN1_TX_IRQn, 1);
-  NVIC_EnableIRQ(CAN1_TX_IRQn);
+  NVIC_SetPriority(CAN1_RX0_IRQn, 1);
+  NVIC_EnableIRQ(CAN1_RX0_IRQn);
   // Enable FIFO Message Pending Interrupt 
   CAN1->IER |= CAN_IER_FMPIE0 | CAN_IER_FMPIE1;
   DEBUGLN("CAN1 interrupt enabled.");
+#endif
 
   return true;
 }
 
+int CANstate2,CANstate1;
 void CAN1_RX0_IRQHandler(void) {
-  light.setColor(CANstate,CANstate,CANstate);
-  CANstate = (CANstate==0? 255 : 0);
+  CANstate2 = (CANstate2==0? 255 : 0);
+  light.setColor(0,CANstate1,CANstate2);
   CAN1->RF0R |= CAN_RF0R_RFOM0;  // release FIFO
   CAN1->IER |= CAN_IER_FMPIE0;  // enable interrupt
 }
 
 void CAN1_RX1_IRQHandler(void) {
-  light.setColor(CANstate,CANstate,CANstate);
-  CANstate = (CANstate==0? 255 : 0);
+  CANstate1 = (CANstate1==0? 255 : 0);
+  light.setColor(0,CANstate2,CANstate2);
   CAN1->RF1R |= CAN_RF1R_RFOM1;  // release FIFO
   CAN1->IER |= CAN_IER_FMPIE1;  // enable interrupt
 }

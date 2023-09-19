@@ -23,6 +23,9 @@
   //#define CAN_SPEED       CAN_100KBPS
   #define CAN_SPEED       CAN_500KBPS
   //#define CAN_SPEED       CAN_1000KBPS
+
+  // 2023-09-19 Causes board to halt the first time the interrupt is called.  STM is aware of the problem.
+  //#define CAN_ENABLE_RX0_INTERRUPT  
 #endif
 
 //-----------------------------------------------------------------------------
