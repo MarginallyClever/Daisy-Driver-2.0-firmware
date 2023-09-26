@@ -25,6 +25,8 @@ CAN_bit_timing_config_t can_configs[6] = {{2, 12, 56}, {2, 12, 28}, {2, 13, 21},
 CANBus CANbus;
 
 
+int CANstate2=0,CANstate1=0;
+
 uint8_t counter = 0;
 uint8_t frameLength = 0;
 uint32_t previousMillis = 0;  // stores last time output was updated
@@ -277,13 +279,12 @@ bool CANBus::init(BITRATE bitrate, int remap) {
 
   CAN1->FMR   &= ~(0x1UL);               // Deactivate initialization mode
 
-  uint16_t TimeoutMilliseconds = 1000;
+  uint16_t CAN_INIT_TIMEOUT = 1000;
   bool can2 = false;
-  CAN2->MCR   &= ~(0x1UL);               // Require CAN2 to normal mode  
-
+  CAN2->MCR &= ~(0x1UL);                 // Require CAN2 to normal mode  
   // Wait for normal mode
   // If the connection is not correct, it will not return to normal mode.
-  for (uint16_t wait_ack = 0; wait_ack < TimeoutMilliseconds; wait_ack++) {
+  for (uint16_t wait_ack = 0; wait_ack < CAN_INIT_TIMEOUT; wait_ack++) {
     if ((CAN2->MSR & 0x1UL) == 0) {
       can2 = true;
       break;
@@ -300,10 +301,9 @@ bool CANBus::init(BITRATE bitrate, int remap) {
 
   bool can1 = false;
   CAN1->MCR &= ~(0x1UL);  // Require CAN1 to normal mode 
-
   // Wait for normal mode
   // If the connection is not correct, it will not return to normal mode.
-  for (uint16_t wait_ack = 0; wait_ack < TimeoutMilliseconds; wait_ack++) {
+  for (uint16_t wait_ack = 0; wait_ack < CAN_INIT_TIMEOUT; wait_ack++) {
     if ((CAN1->MSR & 0x1UL) == 0) {
       can1 = true;
       break;
@@ -323,25 +323,26 @@ bool CANBus::init(BITRATE bitrate, int remap) {
   // attach message pending interrupt method
   NVIC_SetPriority(CAN1_RX0_IRQn, 1);
   NVIC_EnableIRQ(CAN1_RX0_IRQn);
+  CAN1->IER |= CAN_IER_FMPIE0;
+#endif
+#ifdef CAN_ENABLE_RX0_INTERRUPT
+  NVIC_SetPriority(CAN1_RX1_IRQn, 1);
+  NVIC_EnableIRQ(CAN1_RX1_IRQn);
   // Enable FIFO Message Pending Interrupt 
-  CAN1->IER |= CAN_IER_FMPIE0 | CAN_IER_FMPIE1;
-  DEBUGLN("CAN1 interrupt enabled.");
+  CAN1->IER |= CAN_IER_FMPIE1;
 #endif
 
   return true;
 }
 
-int CANstate2,CANstate1;
 void CAN1_RX0_IRQHandler(void) {
   CANstate2 = (CANstate2==0? 255 : 0);
-  light.setColor(0,CANstate1,CANstate2);
   CAN1->RF0R |= CAN_RF0R_RFOM0;  // release FIFO
   CAN1->IER |= CAN_IER_FMPIE0;  // enable interrupt
 }
 
 void CAN1_RX1_IRQHandler(void) {
   CANstate1 = (CANstate1==0? 255 : 0);
-  light.setColor(0,CANstate2,CANstate2);
   CAN1->RF1R |= CAN_RF1R_RFOM1;  // release FIFO
   CAN1->IER |= CAN_IER_FMPIE1;  // enable interrupt
 }

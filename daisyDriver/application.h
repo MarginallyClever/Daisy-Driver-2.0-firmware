@@ -7,6 +7,8 @@
 
 #define POSITION_UPDATE_INTERVAL  100 // ms
 
+#define CAN_ADDRESS_EVERYONE_DELAY 10 //ms
+
 //-----------------------------------------------------------------------------
 
 uint8_t CANstate=0;

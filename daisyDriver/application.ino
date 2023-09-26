@@ -16,6 +16,9 @@ void Application::setup() {
   if(iAmMaster()) {
     delay(1500);
     requestAllNodeIDs();
+  } else {
+    // I just joined the party.  Hi!  My name is...
+    sendID();
   }
 }
 
@@ -74,6 +77,13 @@ void Application::parseSend(CANParser &inbound) {
   int index = inbound.getAddress();  // for/from who?
   if(index != ADDRESS_EVERYONE && index != CANbus.myAddress) return;  // not for everyone and not for me
   //Serial.println("For me");
+
+  if(index == ADDRESS_EVERYONE) {
+    // if every board receives this message at the same time and responds at the same time it can flood the server's inbox.
+    // if all boards delay some fixed equal value, same problem.  therefore use this board's unique CAN address as a scalar for the delay time
+    // so they take turns.
+    delay(CANbus.myAddress*CAN_ADDRESS_EVERYONE_DELAY);
+  }
 
   toggleCANState();
   int id = inbound.getLong();
@@ -298,6 +308,7 @@ void Application::requestAllNodeIDs() {
   msg.addShort(CAN_ID);
   msg.send();
 }
+
 
 void Application::serverUpdate() {
   // only server at address 0

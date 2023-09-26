@@ -26,6 +26,7 @@
 
   // 2023-09-19 Causes board to halt the first time the interrupt is called.  STM is aware of the problem.
   //#define CAN_ENABLE_RX0_INTERRUPT  
+  //#define CAN_ENABLE_RX1_INTERRUPT  
 #endif
 
 //-----------------------------------------------------------------------------
@@ -44,6 +45,7 @@
 #include "pins.h"
 #include "serial.h"
 #include "CANBus.h"
+#include "CANParser.h"
 #include "memory.h"
 #include "sensor.h"
 #include "motor.h"

@@ -46,9 +46,10 @@ void loop() {
   CANopen.updateHeartbeat();
   application.update();
 
+  //light.setColor(0,CANstate1,CANstate2);/*/
   light.setColor(
     cos(sensorAngleUnit*PI)*255.0f/PI,
     motor.state, // sin(sensorAngleUnit*PI)*255.0f/PI,
     CANstate
-    );
+    );//*/
 }
