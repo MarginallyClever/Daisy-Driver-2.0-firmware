@@ -346,6 +346,7 @@ void CAN1_RX1_IRQHandler(void) {
   CAN1->RF1R |= CAN_RF1R_RFOM1;  // release FIFO
   CAN1->IER |= CAN_IER_FMPIE1;  // enable interrupt
 }
+
  
 /**
  * Decodes CAN messages from the data registers and populates a 

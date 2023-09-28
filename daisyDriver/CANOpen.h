@@ -17,6 +17,7 @@
 #define CAN_ACCELERATION  6
 #define CAN_SENSOR        7
 #define CAN_ENABLE_MOTOR  8
+#define CAN_RESET         9 // reset device
 
 #define ADDRESS_MASK 0x7F  // 0b00001111111
 

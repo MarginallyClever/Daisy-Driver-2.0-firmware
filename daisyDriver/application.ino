@@ -15,9 +15,10 @@ void Application::setup() {
   motor.setTargetVelocity(velocityDegPerS);
   if(iAmMaster()) {
     delay(1500);
-    requestAllNodeIDs();
+    requestAllReset();
   } else {
     // I just joined the party.  Hi!  My name is...
+    delay(CANbus.myAddress * CAN_ADDRESS_EVERYONE_DELAY);
     sendID();
   }
 }
@@ -105,6 +106,7 @@ void Application::parseSend(CANParser &inbound) {
       case CAN_VELOCITY:  setTargetVelocity(inbound.getFloat());  break;
       case CAN_SENSOR:  break;  // do nothing.
       case CAN_ENABLE_MOTOR:  enableOneMotor(CANbus.myAddress,inbound.getShort());  break;
+      case CAN_RESET:  HAL_NVIC_SystemReset();  break;
       default:  break;
     }
   }
@@ -306,6 +308,14 @@ void Application::requestAllNodeIDs() {
   msg.start(COB_SDO_SEND,ADDRESS_EVERYONE);
   msg.addLong(CAN_READ);
   msg.addShort(CAN_ID);
+  msg.send();
+}
+
+void Application::requestAllReset() {
+  CANParser msg;
+  msg.start(COB_SDO_SEND,ADDRESS_EVERYONE);
+  msg.addLong(CAN_SET);
+  msg.addShort(CAN_RESET);
   msg.send();
 }
 

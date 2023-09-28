@@ -23,6 +23,7 @@ public:
   void rapidMove();
   void reportAllMotorPositions();
   void requestAllNodeIDs();
+  void requestAllReset();
   bool iAmMaster();
 
   /**
