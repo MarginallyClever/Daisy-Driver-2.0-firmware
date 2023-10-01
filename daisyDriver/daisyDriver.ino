@@ -28,7 +28,8 @@ void setup() {
   light.setup();
   SENSORsetup();
   motor.setup();
-  application.setup();
+  server.setup();
+  client.setup();
 }
 
 
@@ -44,7 +45,8 @@ void loop() {
   SENSORread();
 
   CANopen.updateHeartbeat();
-  application.update();
+  server.update();
+  client.update();
 
   //light.setColor(0,CANstate1,CANstate2);/*/
   light.setColor(

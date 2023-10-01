@@ -59,6 +59,8 @@ typedef enum {
 #define COB_GET_FUNCTION_CODE(cobID)      (cobID&0x780)  // 0b11110000000
 #define COB_GET_ADDRESS(cobID)            (cobID&0x07F)  // 0b00001111111
 
+#define ADDRESS_EVERYONE                  (0x7F)  // 0b00001111111
+
 //-----------------------------------------------------------------------------
 
 typedef struct {
@@ -229,6 +231,6 @@ public:
 //-----------------------------------------------------------------------------
 
 extern CANBus CANbus;
-extern int CANstate2,CANstate1;
+extern uint8_t CANstate,CANstate1,CANstate2;
 
 //-----------------------------------------------------------------------------

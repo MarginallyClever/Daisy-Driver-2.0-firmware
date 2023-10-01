@@ -58,7 +58,7 @@ void SERIALparse() {
     switch(gcode) {
       case 0:
       case 1:
-        application.rapidMove();
+        server.rapidMove();
         break;
       default:
         break;
@@ -72,7 +72,7 @@ void SERIALparse() {
     switch(mcode) {
       case 17:  SERIALenableMotors(true);  break;
       case 18:  SERIALenableMotors(false);  break;
-      case 114:  application.reportAllMotorPositions();  break;
+      case 114:  server.reportAllMotorPositions();  break;
       default:
         break;
     }
@@ -91,10 +91,10 @@ void SERIALenableMotors(bool newState) {
   for(int i=0;i<NUM_AXIES;++i) {
     if(seen(axies[i])) {
       seenAny=true;
-      application.enableOneMotor(i,newState);
+      server.enableOneMotor(i,newState);
     }
   }
 
-  if(!seenAny) application.enableAllMotors(newState);
+  if(!seenAny) server.enableAllMotors(newState);
 }
 #endif

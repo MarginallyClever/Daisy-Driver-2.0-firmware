@@ -25,7 +25,7 @@ CAN_bit_timing_config_t can_configs[6] = {{2, 12, 56}, {2, 12, 28}, {2, 13, 21},
 CANBus CANbus;
 
 
-int CANstate2=0,CANstate1=0;
+uint8_t CANstate,CANstate1,CANstate2;
 
 uint8_t counter = 0;
 uint8_t frameLength = 0;
@@ -122,7 +122,6 @@ void CANBus::readAddress() {
     | ((uint8_t)digitalRead(PIN_CAN_ADDR4) << 4)
     | ((uint8_t)digitalRead(PIN_CAN_ADDR5) << 5);
 }
-
 
 
 /**
@@ -229,39 +228,41 @@ bool CANBus::init(BITRATE bitrate, int remap) {
     this->setGpio(GPIOB, 13);               // Set PB13
   }
 
-  CAN1->MCR |= 0x1UL;                    // Require CAN1 to Initialization mode 
-  while (!(CAN1->MSR & 0x1UL));          // Wait for Initialization mode
-  this->printRegister("CAN1->MCR=", CAN1->MCR);
+  CAN1->MCR |= CAN_MCR_INRQ;                    // Require CAN1 to Initialization mode 
+  while (!(CAN1->MSR & CAN_MSR_INAK));          // Wait for Initialization mode
+  printRegister("CAN1->MCR=", CAN1->MCR);
 
-  CAN2->MCR |= 0x1UL;                    // Require CAN2 to Initialization mode
-  while (!(CAN2->MSR & 0x1UL));          // Wait for Initialization mode
-  this->printRegister("CAN2->MCR=", CAN2->MCR);
+  CAN2->MCR |= CAN_MCR_INRQ;                    // Require CAN2 to Initialization mode
+  while (!(CAN2->MSR & CAN_MSR_INAK));          // Wait for Initialization mode
+  printRegister("CAN2->MCR=", CAN2->MCR);
 
-  //CAN1->MCR = 0x51UL;                  // Hardware initialization(No automatic retransmission)
-  CAN1->MCR = 0x41UL;                    // Hardware initialization(With automatic retransmission)
+  CAN1->MCR = CAN_MCR_INRQ  // init request
+            | CAN_MCR_RFLM  // Receive FIFO locked against overrun
+            | CAN_MCR_ABOM;  // automatic bus-off management
 
-  //CAN2->MCR = 0x51UL;                  // Hardware initialization(No automatic retransmission)
-  CAN2->MCR = 0x41UL;                    // Hardware initialization(With automatic retransmission)
+  CAN2->MCR = CAN_MCR_INRQ  // init request
+            | CAN_MCR_RFLM  // Receive FIFO locked against overrun
+            | CAN_MCR_ABOM;  // automatic bus-off management
 
   
   // Set bit rates 
   CAN1->BTR &= ~(((0x03) << 24) | ((0x07) << 20) | ((0x0F) << 16) | (0x1FF)); 
   CAN1->BTR |=  (((can_configs[bitrate].TS2-1) & 0x07) << 20) | (((can_configs[bitrate].TS1-1) & 0x0F) << 16) | ((can_configs[bitrate].BRP-1) & 0x1FF);
-  this->printRegister("CAN1->BTR=", CAN1->BTR);
+  printRegister("CAN1->BTR=", CAN1->BTR);
 
   CAN2->BTR &= ~(((0x03) << 24) | ((0x07) << 20) | ((0x0F) << 16) | (0x1FF)); 
   CAN2->BTR |=  (((can_configs[bitrate].TS2-1) & 0x07) << 20) | (((can_configs[bitrate].TS1-1) & 0x0F) << 16) | ((can_configs[bitrate].BRP-1) & 0x1FF);
-  this->printRegister("CAN2->BTR=", CAN2->BTR);
+  printRegister("CAN2->BTR=", CAN2->BTR);
 
   // Configure Filters to default values
-  CAN1->FMR  |=   0x1UL;                 // Set to filter initialization mode
-  CAN1->FMR  &= 0xFFFFC0FF;              // Clear CAN2 start bank
+  CAN1->FMR  |= CAN_FMR_FINIT;  // Set to filter initialization mode
+  CAN1->FMR  &= 0xFFFFC0FF;     // Clear CAN2 start bank
   this->printRegister("CAN1->FMR=", CAN1->FMR);
 
   // bxCAN has 28 filters.
   // These filters are used for both CAN1 and CAN2.
   // STM32F405 has CAN1 and CAN2, so CAN2 filters are offset by 14
-  CAN1->FMR  |= 0xE00;                   // Start bank for the CAN2 interface
+  CAN1->FMR  |= 0xE00;  // Start bank for the CAN2 interface
 
   // Set filter 0
   // Single 32-bit scale configuration 
@@ -277,15 +278,15 @@ bool CANBus::init(BITRATE bitrate, int remap) {
   // Filter bank register to all 0
   this->setFilter(14, 1, 0, 0, 0x0UL, 0x0UL); 
 
-  CAN1->FMR   &= ~(0x1UL);               // Deactivate initialization mode
+  CAN1->FMR &= ~CAN_FMR_FINIT;  // Deactivate initialization mode
 
   uint16_t CAN_INIT_TIMEOUT = 1000;
   bool can2 = false;
-  CAN2->MCR &= ~(0x1UL);                 // Require CAN2 to normal mode  
+  CAN2->MCR &= ~CAN_MCR_INRQ;                 // Require CAN2 to normal mode  
   // Wait for normal mode
   // If the connection is not correct, it will not return to normal mode.
   for (uint16_t wait_ack = 0; wait_ack < CAN_INIT_TIMEOUT; wait_ack++) {
-    if ((CAN2->MSR & 0x1UL) == 0) {
+    if ((CAN2->MSR & CAN_MSR_INAK) == 0) {
       can2 = true;
       break;
     }
@@ -300,11 +301,11 @@ bool CANBus::init(BITRATE bitrate, int remap) {
   }
 
   bool can1 = false;
-  CAN1->MCR &= ~(0x1UL);  // Require CAN1 to normal mode 
+  CAN1->MCR &= ~CAN_MSR_INRQ;  // Require CAN1 to normal mode 
   // Wait for normal mode
   // If the connection is not correct, it will not return to normal mode.
   for (uint16_t wait_ack = 0; wait_ack < CAN_INIT_TIMEOUT; wait_ack++) {
-    if ((CAN1->MSR & 0x1UL) == 0) {
+    if ((CAN1->MSR & CAN_MSR_INAK) == 0) {
       can1 = true;
       break;
     }

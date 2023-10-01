@@ -61,7 +61,7 @@ void Motor::setup() {
   driver.pwm_autoscale(true);
 
   // enable the driver
-  enable();
+  enable(true);
 
   uint32_t clockFrequency = timer->getTimerClkFreq();
   uint32_t prescale = clockFrequency/(STEPPER_TIMER_RATE);
@@ -103,12 +103,7 @@ void Motor::setCompare(const uint32_t overflow) {
 }
 
 
-inline uint32_t getCount() {
-  return timer->getCount();
-}
-
-
-void SPIsetup() {
+void Motor::SPIsetup() {
   SPI.setMOSI(PIN_SPI1_MOSI);
   SPI.setMISO(PIN_SPI1_MISO);
   SPI.setSCLK(PIN_SPI1_CLK);
@@ -172,7 +167,7 @@ void Motor::stepInterrupt() {
       // blink light
       state = (!state ? 255:0);
 
-      // move the 
+      // Make the step
       digitalWrite(PIN_TMC_STEP,HIGH);
       digitalWrite(PIN_TMC_STEP,LOW);
       // keep count
@@ -190,7 +185,7 @@ void Motor::stepInterrupt() {
     nextTick += interval;
 
     interruptOff();
-    minTicks = getCount() + (uint32_t)STEPPER_TIMER_TICKS_PER_US;
+    minTicks = timer->getCount() + (uint32_t)STEPPER_TIMER_TICKS_PER_US;
     if (!--maxLoops) nextTick = minTicks;
   } while(nextTick < minTicks);
 
@@ -226,12 +221,8 @@ void Motor::setTargetVelocity(float degPerS) {
   stepDelay = STEPPER_TIMER_RATE / (degPerS * STEPS_PER_DEGREE);
 }
 
-void Motor::enable() {
-  digitalWrite(PIN_TMC_EN,LOW);
-}
-
-void Motor::disable() {
-  digitalWrite(PIN_TMC_EN,HIGH);
+void Motor::enable(uint8_t state) {
+  digitalWrite(PIN_TMC_EN, state==0 ? HIGH : LOW);
 }
 
 bool Motor::getMotorEnable() {

@@ -3,10 +3,6 @@
 
 //#define USE_SOFTWARE_SPI
 
-// motor gearbox parameters
-#define STEPS_PER_DEGREE (105.0)
-#define STEPS_PER_ROTATION (STEPS_PER_DEGREE*360)
-
 // for TMC2130 StallGuard
 #define STALL_VALUE 0 // [-64..63]
 
@@ -46,13 +42,17 @@ public:
 
   float getTargetPosition();
 
-  void enable();
-  void disable();
+  /**
+   * @param state 0 for off, anything else for on.
+   */
+  void enable(uint8_t state);
+  
   void stepInterrupt();
 
   bool getMotorEnable();
 
 private:
+  void SPIsetup();
   void interruptEnable();
   void interruptDisable();
 };

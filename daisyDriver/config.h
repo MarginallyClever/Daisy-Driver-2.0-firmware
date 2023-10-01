@@ -29,6 +29,25 @@
   //#define CAN_ENABLE_RX1_INTERRUPT  
 #endif
 
+
+#define NUM_AXIES (6)
+
+/**
+ * Every client that replies to a ADDRESS_EVERYONE message delays their response by this * their CAN id.
+ * this is a workaround to prevent overflow on the server until the CAN receive interrupt can be fixed.
+ */
+#define CAN_ADDRESS_EVERYONE_DELAY 10 //ms
+
+/**
+ * When server is polling continuously for positions... this is the delay between polling requests.
+ */
+#define POSITION_UPDATE_INTERVAL  100 // ms
+
+// motor gearbox parameters
+#define STEPS_PER_DEGREE (105.0)
+#define STEPS_PER_ROTATION (STEPS_PER_DEGREE*360)
+
+
 //-----------------------------------------------------------------------------
 
 #ifdef BUILD_SERIAL
@@ -51,4 +70,5 @@
 #include "motor.h"
 #include "led.h"
 #include "CANOpen.h"
-#include "application.h"
+#include "client.h"
+#include "server.h"

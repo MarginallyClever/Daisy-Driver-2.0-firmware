@@ -1,21 +1,8 @@
 #pragma once
-//-----------------------------------------------------------------------------
-
-#define NUM_AXIES (6)
-
-#define ADDRESS_EVERYONE 0x7F  // 0b00001111111
-
-#define POSITION_UPDATE_INTERVAL  100 // ms
-
-#define CAN_ADDRESS_EVERYONE_DELAY 10 //ms
-
-//-----------------------------------------------------------------------------
-
-uint8_t CANstate=0;
-
-//-----------------------------------------------------------------------------
-
-class Application {
+/**
+ * The device with CAN id 0 is the server.
+ */
+class Server {
 public:
   void setup();
   void update();
@@ -24,7 +11,6 @@ public:
   void reportAllMotorPositions();
   void requestAllNodeIDs();
   void requestAllReset();
-  bool iAmMaster();
 
   /**
    * Enable or disable one motor.
@@ -42,7 +28,6 @@ public:
 private:
   void printCANmsg(CAN_msg_t &msg);
   void readCAN();
-  void sendID();
   void replyOneFloat(uint8_t subIndex,float value);
   void replyOneShort(uint8_t subIndex,uint8_t value);
   void requestOneSensor(uint8_t index);
@@ -55,11 +40,10 @@ private:
   void serverUpdate();
   void setAllVelocity(float newVel);
 
-  void setTargetPosition(float targetPosition);
-  void setTargetVelocity(float targetVelocity);
-
   void parseReceive(CANParser &inbound);
-  void parseSend(CANParser &inbound);
 };
 
-extern Application application;
+//-----------------------------------------------------------------------------
+
+extern Server server;
+extern char axies[NUM_AXIES];
